@@ -190,7 +190,7 @@ export function FinancialCharts({
     },
     {
       title: "Comparativo financeiro",
-      subtitle: "A Vencer, Vencido e Recebido YTD",
+      subtitle: `A Vencer, ${categoryLabel.overdue} e Recebido YTD`,
       content: (
         <Bars
           data={categories}
@@ -220,14 +220,14 @@ export function FinancialCharts({
       ),
     },
     {
-      title: "Faixas de atraso",
-      subtitle: "Saldos vencidos · referência da posição original",
+      title: `Faixas de atraso · ${categoryLabel.overdue}`,
+      subtitle: `${categoryLabel.overdue} · referência da posição original`,
       content: (
         <Bars
           data={aging(records, reference)}
           horizontal
           denominator={summary.overdue}
-          label="Saldo vencido"
+          label={categoryLabel.overdue}
           color={colors[1]}
         />
       ),

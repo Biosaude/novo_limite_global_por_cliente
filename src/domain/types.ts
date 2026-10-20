@@ -1,7 +1,7 @@
 export type Category = "upcoming" | "overdue" | "received";
 export const categoryLabel: Record<Category, string> = {
   upcoming: "A Vencer",
-  overdue: "Vencido",
+  overdue: "Vencidos (inadimplência)",
   received: "Recebido",
 };
 export type RawCell =

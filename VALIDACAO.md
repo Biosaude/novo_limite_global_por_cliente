@@ -18,7 +18,7 @@ A identificação usa os cabeçalhos reais. `Vr.duplicata` não é usado em luga
 | Indicador | Resultado |
 |---|---:|
 | A Vencer | R$ 25.711.247,24 |
-| Vencido | R$ 10.575.015,21 |
+| Vencidos (inadimplência) | R$ 10.575.015,21 |
 | Recebido YTD | R$ 56.999.819,30 |
 | Limite Global | R$ 93.286.081,75 |
 
@@ -35,7 +35,7 @@ O cache OOXML contém 13 resultados zero de fórmulas compartilhadas omitidos pe
 
 ## Escopo dos testes
 
-Resultado da execução com o arquivo oficial: **14 testes de serviços aprovados; 28 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
+Resultado da execução com o arquivo oficial: **14 testes de serviços aprovados; 32 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
 
 Testes de serviços: centavos e formatos monetários, overflow, datas civis, leitura de Excel, campos originais, YTD, filtros, agrupamentos, faixas de atraso, séries mensais, arquivos inválidos, mapeamento reordenado, campos ausentes, cache de fórmulas e conciliação integral da base oficial.
 
@@ -54,6 +54,14 @@ O teste de **Baixar Modelo da Base** aguarda o evento de download, salva o arqui
 O teste do cabeçalho usa um relógio controlado: a base é lida em um horário e aplicada em outro. Confere que a última atualização registra o horário da aplicação em America/Sao_Paulo, além dos registros e do status. O FY responde ao filtro de ano. Nenhum desses horários controlados alimenta o produto.
 
 As capturas em `docs/preview-*.png` usam somente o arquivo sintético `ARQUIVO_DE_TESTE_VISUAL.xlsx`. Não contêm a planilha oficial, pacientes ou dados financeiros reais. A validação da **nova planilha atualizada** continua pendente de seu fornecimento; os resultados reais já conferidos são apenas os da base histórica de 19/10/2026.
+
+## Painel sem menu lateral e rótulo de inadimplência
+
+A categoria passa a ser exibida como **Vencidos (inadimplência)** em todos os rótulos de interface, incluindo KPIs, filtros, rankings, prévia da base, detalhamento e legendas. Os identificadores internos e os nomes originais das abas e colunas não foram alterados. As fórmulas e o tratamento temporal permanecem os mesmos.
+
+A navegação foi movida para o topo, sem elemento lateral. Os filtros usam um bloco em grade com o status da seleção. As faixas da inadimplência reutilizam a função de agrupamento por atraso já existente, com valores e participações reais da seleção; eventuais faixas de diagnóstico com valor são preservadas. Em telas largas, o gráfico mensal ocupa a área principal e as faixas de atraso ficam ao lado.
+
+O novo fluxo de navegador verifica a ausência do menu lateral, o acesso às cinco seções no topo, o rótulo uniforme, os valores das faixas, a resposta ao filtro da categoria e a geometria da linha principal de gráficos. Também verifica que os cards e a página não ultrapassam seus contêineres em desktop, notebook, tablet e celular.
 
 ## Limites da evidência
 
