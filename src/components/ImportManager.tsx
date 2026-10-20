@@ -1,8 +1,14 @@
 import { useRef, useState } from "react";
-import { FileSpreadsheet, ShieldCheck } from "lucide-react";
+import {
+  Download,
+  FolderOpen,
+  RefreshCw,
+  FileSpreadsheet,
+  ShieldCheck,
+} from "lucide-react";
 import type { Dataset, Mapping, SourceWorkbook } from "../domain/types";
 import { categoryLabel, fieldLabels } from "../domain/types";
-import { readFile } from "../importacao/readFile";
+import { downloadTemplate, readFile } from "../importacao/readFile";
 import {
   amountAliases,
   blank,
@@ -32,6 +38,7 @@ export function ImportManager({
   const [filename, setFilename] = useState("");
   const [reference, setReference] = useState("2026-10-19");
   const [candidate, setCandidate] = useState<Dataset | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -39,6 +46,7 @@ export function ImportManager({
   const input = useRef<HTMLInputElement>(null);
   const resetValidation = () => {
     setCandidate(null);
+    setConfirmed(false);
     setError("");
     setSuccess("");
   };
@@ -47,13 +55,24 @@ export function ImportManager({
     setBusy(true);
     setError("");
     setCandidate(null);
+    setConfirmed(false);
     setSuccess("");
     setSource(null);
     try {
       const workbook = await readFile(file);
       setSource(workbook);
-      setMappings(suggestMappings(workbook));
+      const suggestions = suggestMappings(workbook);
+      setMappings(suggestions);
       setFilename(file.name);
+      try {
+        setCandidate(normalize(workbook, suggestions, reference, file.name));
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Confira o mapeamento antes de validar.",
+        );
+      }
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Não foi possível abrir a planilha.",
@@ -77,6 +96,7 @@ export function ImportManager({
   async function confirm() {
     if (
       !candidate ||
+      !confirmed ||
       candidate.issues.some((issue) => issue.severity === "error")
     )
       return;
@@ -85,9 +105,10 @@ export function ImportManager({
     try {
       await onCommit(candidate, remember);
       setSuccess(
-        `Base confirmada: ${candidate.records.length.toLocaleString("pt-BR")} registros. Acesse Visão geral para consultar os indicadores.`,
+        `Dashboard atualizado com sucesso: ${candidate.records.length.toLocaleString("pt-BR")} registros. Acesse Visão geral para consultar os indicadores.`,
       );
       setCandidate(null);
+      setConfirmed(false);
       setSource(null);
     } catch (e) {
       setError(
@@ -107,6 +128,113 @@ export function ImportManager({
       : null;
   return (
     <div className="import-manager">
+      <section
+        className="base-controls panel"
+        aria-label="Gerenciamento da base"
+      >
+        <div className="panel-title">
+          <div>
+            <h2>Gerenciamento da Base de Dados</h2>
+            <p>
+              Baixe o modelo, selecione a extração e confirme os dados antes de
+              aplicar.
+            </p>
+          </div>
+          <span className="tag">EXCEL · DADOS LOCAIS</span>
+        </div>
+        <div
+          className="base-actions"
+          id="base-actions"
+          role="group"
+          aria-label="Controles da base"
+        >
+          <button
+            className="base-action"
+            aria-label="Baixar Modelo da Base"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              try {
+                await downloadTemplate();
+                setSuccess(
+                  "Download do modelo iniciado. A planilha está vazia: preencha os registros reais antes de importar.",
+                );
+              } catch (e) {
+                setError(
+                  e instanceof Error
+                    ? e.message
+                    : "Não foi possível gerar o modelo.",
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <span className="action-icon">
+              <Download size={22} />
+            </span>
+            <span>
+              <strong>Baixar Modelo da Base</strong>
+              <small>Estrutura oficial · sem dados</small>
+            </span>
+          </button>
+          <button
+            className="base-action"
+            aria-label="Selecionar Nova Base"
+            disabled={busy}
+            onClick={() => input.current?.click()}
+          >
+            <span className="action-icon">
+              <FolderOpen size={22} />
+            </span>
+            <span>
+              <strong>Selecionar Nova Base</strong>
+              <small>Importar arquivo .xlsx do computador</small>
+            </span>
+          </button>
+          <button
+            className="base-action apply-action"
+            aria-label="Atualizar Dashboard"
+            disabled={busy || !candidate || !!blockers.length || !confirmed}
+            onClick={() => void confirm()}
+          >
+            <span className="action-icon">
+              <RefreshCw size={22} />
+            </span>
+            <span>
+              <strong>Atualizar Dashboard</strong>
+              <small>
+                {busy
+                  ? "Processando…"
+                  : confirmed && candidate
+                    ? "Base conferida · pronta para aplicar"
+                    : "Requer validação e confirmação"}
+              </small>
+            </span>
+          </button>
+        </div>
+        <input
+          ref={input}
+          type="file"
+          aria-label="Selecionar planilha Excel"
+          accept=".xlsx"
+          hidden
+          disabled={busy}
+          onChange={(event) => void open(event.target.files?.[0])}
+        />
+        <p className="helper">
+          {busy
+            ? "Processando o Excel… A base em utilização permanece preservada."
+            : candidate
+              ? blockers.length
+                ? "Base com erros bloqueantes. Corrija as ocorrências para habilitar a atualização."
+                : confirmed
+                  ? "Base validada e confirmada. Clique em Atualizar Dashboard para aplicá-la."
+                  : "Prévia calculada. Confira os totais e marque a confirmação no final da prévia."
+              : "Nenhuma nova base validada. O painel permanece com a última base aplicada."}
+        </p>
+      </section>
       {active && (
         <div className="active-base panel">
           <div>
@@ -162,17 +290,11 @@ export function ImportManager({
             <FileSpreadsheet size={38} />
             <h3>Selecione sua posição financeira</h3>
             <p>Faturamento A Vencer, Vencido e Faturado.xlsx</p>
-            <label className="file-label">
-              Selecionar planilha
-              <input
-                ref={input}
-                type="file"
-                aria-label="Selecionar planilha Excel"
-                accept=".xlsx"
-                disabled={busy}
-                onChange={(event) => void open(event.target.files?.[0])}
-              />
-            </label>
+            <p className="upload-guidance">
+              Use <strong>Selecionar Nova Base</strong> nos controles acima. A
+              estrutura é identificada e os totais são calculados
+              automaticamente quando o mapeamento é reconhecido.
+            </p>
             <small>
               Até 20 MB. Processamento no próprio navegador, sem envio do
               arquivo. {busy ? "Processando…" : filename}
@@ -203,7 +325,7 @@ export function ImportManager({
               "Mapear saldo em aberto ou valor recebido",
               "Validar registros, totais e datas",
               "Consultar advertências sem excluir títulos",
-              "Confirmar ou substituir a base anterior",
+              "Confirmar os dados e clicar em Atualizar Dashboard",
             ].map((text, index) => (
               <li key={text}>
                 <span>{index + 1}</span>
@@ -424,19 +546,28 @@ export function ImportManager({
             válidos.
           </p>
           <AuditTable dataset={candidate} readonly />
-          <button
-            className="primary"
-            disabled={busy || !!blockers.length}
-            onClick={() => void confirm()}
-          >
+          <label className="check-label confirm-base">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              disabled={busy || !!blockers.length}
+              onChange={(event) => setConfirmed(event.target.checked)}
+            />
             {active
               ? "Confirmar substituição da base"
               : "Confirmar utilização da base"}
-          </button>
+            : conferi a estrutura, os totais e as advertências.
+          </label>
+          <a className="text-button back-to-actions" href="#base-actions">
+            Voltar aos controles para Atualizar Dashboard
+          </a>
           <button
             className="secondary"
             disabled={busy}
-            onClick={() => setCandidate(null)}
+            onClick={() => {
+              setCandidate(null);
+              setConfirmed(false);
+            }}
           >
             Rever mapeamento
           </button>

@@ -5,16 +5,30 @@ Dashboard financeiro em React, TypeScript e Vite. A primeira etapa funciona inte
 ## Utilização
 
 1. Abra o site disponibilizado pelo responsável pelo projeto. Nesta entrega, o código segue em branch para revisão via PR; atualizar a aplicação na Vercel é uma ação separada do responsável.
-2. Acesse **Gerenciar Base** e selecione o arquivo `.xlsx`.
+2. Acesse **Gerenciar Base**. Use **Baixar Modelo da Base** caso precise da estrutura oficial vazia ou clique em **Selecionar Nova Base** para escolher o arquivo `.xlsx`.
 3. Informe a data da extração. `19/10/2026` é a referência histórica inicial, não a data atual automática.
 4. Confira todas as abas, a linha do cabeçalho e as colunas. Para A Vencer e Vencido, mapeie **saldo em aberto**; para Recebido, **valor efetivamente recebido** e **data de recebimento**. Não use o valor nominal da duplicata.
-5. Clique em **Validar estrutura e calcular totais**. Confira quantidade de registros, valores e ocorrências.
-6. Confirme a utilização da base ou a substituição da base anterior. Erros de valores ou de datas essenciais de recebimento bloqueiam a confirmação. Advertências não excluem registros nem bloqueiam o dashboard.
+5. A prévia é calculada automaticamente quando as abas e colunas são reconhecidas. Confira quantidade de registros, valores e ocorrências. Se ajustar o mapeamento ou a referência, clique em **Validar estrutura e calcular totais** para gerar uma nova prévia.
+6. Marque a confirmação da conferência na prévia e clique em **Atualizar Dashboard**, nos três controles principais. O botão permanece desabilitado sem uma base validada e confirmada. Erros de valores ou de datas essenciais de recebimento bloqueiam a aplicação. Advertências não excluem registros nem bloqueiam o dashboard.
 7. Use Visão geral, Clientes, Representantes e Auditoria. Clique no nome de um grupo para abrir os títulos e consultar todas as células originais de um registro.
 
 A base anterior permanece ativa enquanto um novo arquivo é processado, se houver erros ou enquanto não houver confirmação explícita da substituição. Abas desconhecidas exigem categoria definida; não são ignoradas automaticamente. Cabeçalhos repetidos continuam distinguíveis pelo número da coluna. Linhas vazias e conteúdo anterior ao cabeçalho ficam preservados na origem, com suas contagens na conferência, sem entrar como títulos financeiros.
 
 O sistema aceita `.xlsx` sem senha, até 20 MB, até 100.000 linhas de dados e 256 colunas por aba, 2 milhões de células no total e 150 MB descompactados. Arquivos ilegíveis, sem registros ou acima dos limites são rejeitados; não há truncamento silencioso. Não há execução nem recálculo de fórmulas: utiliza-se o resultado salvo no Excel. Resultados zero de fórmulas compartilhadas são recuperados do OOXML original para contornar uma omissão do ExcelJS.
+
+## Interface e modelo Excel
+
+O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). As cinco seções de navegação são preservadas.
+
+O cabeçalho exibe o exercício selecionado (**FY**), a data e o horário da última aplicação da base (fuso America/Sao_Paulo), a quantidade total de registros e o status. Essa atualização só é registrada quando **Atualizar Dashboard** termina com sucesso; gerar uma prévia ou registrar uma justificativa não altera a data de atualização da base.
+
+**Baixar Modelo da Base** gera um download real no navegador de `Modelo_Base_Limite_Global_Biosaude.xlsx`, sem dados e sem chamadas externas. São as três abas oficiais, com todos os cabeçalhos e as colunas financeiras distintas, inclusive os cabeçalhos `Descricao` repetidos da origem. Preencha registros reais antes de importar; o modelo vazio não constitui uma base financeira válida. Não há indicadores de demonstração no produto.
+
+As capturas abaixo usam exclusivamente **ARQUIVO_DE_TESTE_VISUAL.xlsx**, gerado pelas fixtures de testes. Os valores e nomes exibidos nelas são sintéticos e **não são resultados oficiais**. As imagens permitem inspeção visual no GitHub antes de atualizar a Vercel; não representam uma aplicação já implantada.
+
+- [Dashboard — arquivo de teste](docs/preview-dashboard-teste.png)
+- [Gerenciar Base — três controles](docs/preview-gerenciar-base.png)
+- [Dashboard mobile — arquivo de teste](docs/preview-mobile-teste.png)
 
 ## Regras financeiras
 

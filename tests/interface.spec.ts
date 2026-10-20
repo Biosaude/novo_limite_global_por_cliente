@@ -11,14 +11,12 @@ async function stage(
   variant: Parameters<typeof fixture>[0] = "normal",
 ) {
   await manage(page);
-  await page
-    .getByLabel("Selecionar planilha Excel")
-    .setInputFiles({
-      name: "teste.xlsx",
-      mimeType:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      buffer: await fixture(variant),
-    });
+  await page.getByLabel("Selecionar planilha Excel").setInputFiles({
+    name: "teste.xlsx",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: await fixture(variant),
+  });
   await expect(
     page.getByRole("heading", { name: "Conferir estrutura e mapeamento" }),
   ).toBeVisible({ timeout: 30000 });
@@ -34,9 +32,14 @@ async function importFixture(page: Page, remember = false) {
   if (remember)
     await page.getByLabel("Lembrar a nova base neste navegador").check();
   await page
-    .getByRole("button", { name: "Confirmar utilização da base" })
+    .getByRole("checkbox", { name: /Confirmar utilização da base/ })
+    .check();
+  await page
+    .getByRole("button", { name: "Atualizar Dashboard", exact: true })
     .click();
-  await expect(page.getByText(/Base confirmada: 6 registros/)).toBeVisible();
+  await expect(
+    page.getByText(/Dashboard atualizado com sucesso: 6 registros/),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Voltar ao dashboard" }).click();
 }
 
@@ -47,7 +50,7 @@ test("interface vazia: quatro cards, seis gráficos, filtros indisponíveis e re
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Limite Global por Cliente",
+    "Dashboard Limite Global por Cliente · Biosaúde",
   );
   await expect(page.locator(".kpi")).toHaveCount(4);
   await expect(page.locator(".kpi-value")).toHaveText([
@@ -180,13 +183,11 @@ test("substituição inválida preserva a base; confirmação válida troca os v
   await page.goto("/");
   await importFixture(page, true);
   await manage(page);
-  await page
-    .getByLabel("Selecionar planilha Excel")
-    .setInputFiles({
-      name: "corrompido.xlsx",
-      mimeType: "application/octet-stream",
-      buffer: Buffer.from("invalid workbook"),
-    });
+  await page.getByLabel("Selecionar planilha Excel").setInputFiles({
+    name: "corrompido.xlsx",
+    mimeType: "application/octet-stream",
+    buffer: Buffer.from("invalid workbook"),
+  });
   await expect(page.getByRole("alert")).toContainText(
     "Não foi possível ler o Excel",
   );
@@ -195,17 +196,23 @@ test("substituição inválida preserva a base; confirmação válida troca os v
   ).toBeVisible();
   await stage(page, "invalid");
   await expect(
-    page.getByRole("button", { name: "Confirmar substituição da base" }),
+    page.getByRole("checkbox", { name: /Confirmar substituição da base/ }),
   ).toBeDisabled();
   await page.getByRole("button", { name: "Voltar ao dashboard" }).click();
   await expect(page.locator(".kpi.global .kpi-value")).toHaveText(/201,00/);
   await stage(page, "replacement");
   await expect(
-    page.getByRole("button", { name: "Confirmar substituição da base" }),
+    page.getByRole("checkbox", { name: /Confirmar substituição da base/ }),
   ).toBeEnabled();
   await page
-    .getByRole("button", { name: "Confirmar substituição da base" })
+    .getByRole("checkbox", { name: /Confirmar substituição da base/ })
+    .check();
+  await page
+    .getByRole("button", { name: "Atualizar Dashboard", exact: true })
     .click();
+  await expect(
+    page.getByText(/Dashboard atualizado com sucesso:/),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Voltar ao dashboard" }).click();
   await expect(page.locator(".kpi.global .kpi-value")).toHaveText(/143,40/);
   await page.reload();
@@ -245,8 +252,14 @@ test("planilha oficial no navegador: importação, totais reais, advertências e
   );
   await expect(page.locator(".preview-totals")).toContainText("93.286.081,75");
   await page
-    .getByRole("button", { name: "Confirmar utilização da base" })
+    .getByRole("checkbox", { name: /Confirmar utilização da base/ })
+    .check();
+  await page
+    .getByRole("button", { name: "Atualizar Dashboard", exact: true })
     .click();
+  await expect(
+    page.getByText(/Dashboard atualizado com sucesso:/),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Voltar ao dashboard" }).click();
   await expect(page.locator(".kpi.global .kpi-value")).toHaveText(
     /93\.286\.081,75/,
@@ -286,4 +299,143 @@ test("planilha oficial no navegador: importação, totais reais, advertências e
   await expect(overlap.locator(".audit-origin")).toHaveCount(2);
   expect(errors).toEqual([]);
   expect(external).toEqual([]);
+});
+
+test("modelo baixável: download real, planilha vazia compatível e controles alinhados", async ({
+  page,
+}, testInfo) => {
+  const { readFile } = await import("node:fs/promises");
+  const { default: ExcelJS } = await import("exceljs");
+  await page.goto("/");
+  await manage(page);
+  const controls = page.getByRole("group", { name: "Controles da base" });
+  await expect(controls.getByRole("button")).toHaveCount(3);
+  await expect(
+    page.getByRole("button", { name: "Atualizar Dashboard", exact: true }),
+  ).toBeDisabled();
+  const boxes = await Promise.all(
+    (await controls.getByRole("button").all()).map((button) =>
+      button.boundingBox(),
+    ),
+  );
+  expect(boxes.every((box) => !!box)).toBe(true);
+  if (page.viewportSize()!.width > 720) {
+    expect(
+      Math.max(...boxes.map((box) => box!.y)) -
+        Math.min(...boxes.map((box) => box!.y)),
+    ).toBeLessThan(2);
+    expect(
+      Math.max(...boxes.map((box) => box!.width)) -
+        Math.min(...boxes.map((box) => box!.width)),
+    ).toBeLessThan(2);
+    expect(
+      Math.max(...boxes.map((box) => box!.height)) -
+        Math.min(...boxes.map((box) => box!.height)),
+    ).toBeLessThan(2);
+  }
+  const downloadPromise = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Baixar Modelo da Base", exact: true })
+    .click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe(
+    "Modelo_Base_Limite_Global_Biosaude.xlsx",
+  );
+  const output = testInfo.outputPath("modelo.xlsx");
+  await download.saveAs(output);
+  expect(await download.failure()).toBeNull();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(Uint8Array.from(await readFile(output)).buffer);
+  expect(workbook.worksheets).toHaveLength(3);
+  for (const sheet of workbook.worksheets) {
+    expect(sheet.actualRowCount).toBe(1);
+    expect(sheet.getRow(1).getCell(1).value).toBe("Nome cliente");
+    const headers = sheet.getRow(1).values as unknown[];
+    expect(headers).toContain(
+      sheet.name.includes("RECEBIDO") ? "Vr.recebido" : "Vr.aberto",
+    );
+  }
+  const chooserPromise = page.waitForEvent("filechooser");
+  await page
+    .getByRole("button", { name: "Selecionar Nova Base", exact: true })
+    .click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles({
+    name: "ARQUIVO_DE_TESTE.xlsx",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: await fixture(),
+  });
+  await expect(page.locator(".preview-totals")).toContainText("201,00");
+  await expect(
+    page.getByRole("button", { name: "Atualizar Dashboard", exact: true }),
+  ).toBeDisabled();
+});
+
+test("aplicar base exige confirmação e registra horário da aplicação; período muda FY", async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date("2026-10-20T12:00:00Z"));
+  await page.goto("/");
+  await manage(page);
+  await page
+    .getByLabel("Selecionar planilha Excel")
+    .setInputFiles({
+      name: "ARQUIVO_DE_TESTE.xlsx",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      buffer: await fixture(),
+    });
+  await expect(page.locator(".preview-totals")).toContainText("201,00");
+  const apply = page.getByRole("button", {
+    name: "Atualizar Dashboard",
+    exact: true,
+  });
+  await expect(apply).toBeDisabled();
+  await expect(page.locator(".status")).toHaveText("Sem base importada");
+  await page
+    .getByRole("checkbox", { name: /Confirmar utilização da base/ })
+    .check();
+  await expect(apply).toBeEnabled();
+  await page.getByLabel("Data de referência da posição").fill("2026-10-18");
+  await expect(apply).toBeDisabled();
+  await expect(
+    page.getByRole("checkbox", { name: /Confirmar utilização da base/ }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Validar estrutura e calcular totais" })
+    .click();
+  await page
+    .getByRole("checkbox", { name: /Confirmar utilização da base/ })
+    .check();
+  await page.clock.setFixedTime(new Date("2026-10-20T15:45:00Z"));
+  await apply.click();
+  await expect(
+    page.getByText(/Dashboard atualizado com sucesso: 6 registros/),
+  ).toBeVisible();
+  await expect(page.locator(".update-metadata")).toContainText(
+    "20/10/2026, 12:45",
+  );
+  await expect(page.locator(".update-metadata")).toContainText("6 registros");
+  await expect(page.locator(".status")).toHaveText("Atualizada");
+  await page.getByRole("button", { name: "Voltar ao dashboard" }).click();
+  await expect(page.locator(".kpi.global .kpi-value")).toHaveText(/201,00/);
+  await page
+    .getByRole("combobox", { name: "Ano", exact: true })
+    .selectOption("2025");
+  await expect(page.locator(".fiscal-subtitle")).toHaveText(
+    "Dashboard Executivo — FY 2025",
+  );
+  expect(
+    await page
+      .locator(".kpi")
+      .evaluateAll((cards) =>
+        cards.every((card) => card.scrollWidth <= card.clientWidth),
+      ),
+  ).toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
 });

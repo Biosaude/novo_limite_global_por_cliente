@@ -92,7 +92,8 @@ export default function App() {
       alive = false;
     };
   }, []);
-  async function commit(dataset: Dataset, remember: boolean) {
+  async function commit(candidate: Dataset, remember: boolean) {
+    const dataset = { ...candidate, updatedAt: new Date().toISOString() };
     if (remember) await localRepository.save(dataset);
     else if (remembered) await localRepository.clear();
     setActive(dataset);
@@ -248,35 +249,65 @@ export default function App() {
             Planilhas processadas no seu navegador. Sem envio dos dados
             financeiros.
           </p>
-          <span className="version">POSIÇÃO FINANCEIRA · V1.0</span>
+          <span className="version">POSIÇÃO FINANCEIRA · V1.1</span>
         </div>
       </aside>
       <div className="main-shell">
         <header className="topbar">
-          <div className="breadcrumb">
-            Financeiro <ChevronRight size={14} />
-            <strong>{heading}</strong>
+          <div className="dashboard-identity">
+            <span className="header-symbol">
+              <Activity size={25} />
+            </span>
+            <div>
+              <h1>Dashboard Limite Global por Cliente · Biosaúde</h1>
+              <p className="fiscal-subtitle">
+                Dashboard Executivo — FY{" "}
+                {filters.year || new Date().getFullYear()}
+              </p>
+            </div>
           </div>
-          <span className={`status ${active ? "loaded" : ""}`}>
-            <i />
-            {loading
-              ? "Verificando base local…"
-              : active
-                ? `Referência: ${displayDate(active.reference)}`
-                : "Sem base importada"}
-          </span>
+          <div
+            className="update-metadata"
+            aria-label="Última atualização da base"
+          >
+            <span className="metadata-label">ÚLTIMA ATUALIZAÇÃO DA BASE</span>
+            <div className="update-data">
+              {active ? (
+                <>
+                  <time dateTime={active.updatedAt ?? active.importedAt}>
+                    {new Intl.DateTimeFormat("pt-BR", {
+                      timeZone: "America/Sao_Paulo",
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    }).format(new Date(active.updatedAt ?? active.importedAt))}
+                  </time>
+                  <span>
+                    {active.records.length.toLocaleString("pt-BR")} registros
+                  </span>
+                </>
+              ) : (
+                <span>— · 0 registros</span>
+              )}
+              <span className={`status ${active ? "loaded" : ""}`}>
+                <i />
+                {loading
+                  ? "Verificando base local…"
+                  : active
+                    ? "Atualizada"
+                    : "Sem base importada"}
+              </span>
+            </div>
+          </div>
         </header>
         <main>
           <div className="page-heading">
             <div>
               <div className="eyebrow">PAINEL EXECUTIVO</div>
-              <h1>
-                {view === "dashboard" ? "Limite Global por Cliente" : heading}
-              </h1>
-              <p>
+              <h2 className="main-title">{heading}</h2>
+              <p className="base-caption">
                 {active
-                  ? `${active.filename} · ${active.records.length.toLocaleString("pt-BR")} registros preservados`
-                  : "Uma visão integrada da sua posição financeira."}
+                  ? `${active.filename} · Posição financeira: ${displayDate(active.reference)}`
+                  : "Importe sua base para acompanhar a posição financeira."}
               </p>
             </div>
             <button

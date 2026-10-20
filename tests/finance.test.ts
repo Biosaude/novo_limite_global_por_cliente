@@ -275,3 +275,61 @@ test("cache de fórmula compartilhada igual a zero é preservado do OOXML", asyn
     assert.equal(cell.result, 0);
   }
 });
+
+test("modelo Excel vazio conserva o esquema oficial e aceita preenchimento pelo importador", async () => {
+  const { createTemplate } = await import("../src/importacao/template");
+  const { default: ExcelJS } = await import("exceljs");
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await createTemplate());
+  assert.deepEqual(
+    workbook.worksheets.map((sheet) => sheet.name),
+    [
+      "CONSOLIDADO - A VENCER (VA529)",
+      "CONSOLIDADO - VENCIDO (VA529)",
+      "CONSOLIDADO - RECEBIDO (VA527)",
+    ],
+  );
+  for (const [index, sheet] of workbook.worksheets.entries()) {
+    assert.equal(
+      sheet.actualRowCount,
+      1,
+      "modelo não deve conter registros simulados",
+    );
+    const values = sheet.getRow(1).values as unknown[];
+    const row = Array(sheet.columnCount).fill(null);
+    const put = (header: string, value: unknown) => {
+      const position = values.findIndex((item) => item === header);
+      assert.ok(position > 0);
+      row[position - 1] = value;
+    };
+    put("Nome cliente", "CLIENTE DE TESTE — MODELO");
+    put("Nome representante", "REPRESENTANTE DE TESTE");
+    put("Numero do titulo completo", `MODELO-${index}/01`);
+    put("Vr.duplicata", 9999);
+    put(index === 2 ? "Vr.recebido" : "Vr.aberto", [1.01, 2.02, 3.03][index]);
+    put(
+      "Dt.vencimento",
+      new Date(index === 0 ? "2026-10-29T00:00:00Z" : "2026-10-09T00:00:00Z"),
+    );
+    if (index === 2) put("Dt.recebimento", new Date("2026-10-10T00:00:00Z"));
+    sheet.addRow(row);
+  }
+  const source = await parse(Buffer.from(await workbook.xlsx.writeBuffer()));
+  const data = normalize(
+    source,
+    suggestMappings(source),
+    "2026-10-19",
+    "modelo-preenchido-teste.xlsx",
+  );
+  assert.equal(
+    data.issues.filter((issue) => issue.severity === "error").length,
+    0,
+  );
+  assert.deepEqual(totals(selectRecords(data, initialFilters(data))), {
+    upcoming: 101,
+    overdue: 202,
+    received: 303,
+    global: 606,
+    count: 3,
+  });
+});

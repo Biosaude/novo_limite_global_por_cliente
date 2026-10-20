@@ -69,14 +69,14 @@ export function normalize(
       } catch (e) {
         error(
           "invalid_amount",
-          e instanceof Error ? e.message : "Valor financeiro inválido.",
+          `${e instanceof Error ? e.message : "Valor financeiro inválido."} Valor original: ${cellText(row.cells[map.fields.amount]) || "(ausente)"}.`,
         );
       }
       const received = dateValue(get("received"), source.date1904);
       if (map.category === "received" && !received)
         error(
           "invalid_receipt_date",
-          "Data de recebimento ausente ou inválida; impossível determinar o Recebido YTD.",
+          `Data de recebimento ausente ou inválida; impossível determinar o Recebido YTD. Valor original: ${cellText(row.cells[map.fields.received]) || "(ausente)"}. Valor financeiro: ${String(get("amount") ?? "(ausente)")}.`,
         );
       const days = get("days");
       const reportedDays =

@@ -35,13 +35,25 @@ O cache OOXML contém 13 resultados zero de fórmulas compartilhadas omitidos pe
 
 ## Escopo dos testes
 
-Resultado da execução com o arquivo oficial: **13 testes de serviços aprovados; 10 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
+Resultado da execução com o arquivo oficial: **14 testes de serviços aprovados; 28 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
 
 Testes de serviços: centavos e formatos monetários, overflow, datas civis, leitura de Excel, campos originais, YTD, filtros, agrupamentos, faixas de atraso, séries mensais, arquivos inválidos, mapeamento reordenado, campos ausentes, cache de fórmulas e conciliação integral da base oficial.
 
-Testes de navegador: interface sem dados, importação e confirmação, quatro KPIs, seis gráficos, filtros, ranking, representantes, detalhamento de títulos e células originais, justificativas locais, IndexedDB, recarga, remoção, arquivo corrompido, erro bloqueante e substituição válida. A importação oficial é executada em desktop (1440 × 1000) e mobile (390 × 844), com os totais históricos e as advertências conferidos no DOM. Os testes monitoram erros JavaScript e requisições externas durante o fluxo com a planilha real.
+Testes de navegador: interface sem dados, importação e confirmação, quatro KPIs, seis gráficos, filtros, ranking, representantes, detalhamento de títulos e células originais, justificativas locais, IndexedDB, recarga, remoção, arquivo corrompido, erro bloqueante e substituição válida. A importação oficial é executada em desktop (1920 × 1080), notebook (1440 × 1000), tablet (834 × 1112) e mobile (390 × 844), com os totais históricos e as advertências conferidos no DOM. Os testes monitoram erros JavaScript e requisições externas durante o fluxo com a planilha real.
 
 A suíte de navegador usa o build de produção servido localmente; isso evita que a otimização de dependências do servidor de desenvolvimento recarregue a página na primeira importação. O desenvolvimento também declara explicitamente as dependências do worker para pré-otimização.
+
+## Atualização visual e controles da base
+
+Os três botões foram conferidos no navegador nas quatro resoluções. Em desktop, notebook e tablet, as posições, larguras e alturas são verificadas para garantir alinhamento horizontal e dimensões uniformes. No celular, ficam empilhados, com alvos de toque preservados.
+
+O teste de **Baixar Modelo da Base** aguarda o evento de download, salva o arquivo e o abre com ExcelJS. Verifica as três abas, os cabeçalhos financeiros e a ausência de registros. Um teste de serviço preenche o modelo com registros identificados de teste e os importa pelo mesmo normalizador, conciliando os valores esperados sem usar o nominal.
+
+**Selecionar Nova Base** é testado pelo evento real de seleção de arquivo do navegador. A prévia é gerada automaticamente. **Atualizar Dashboard** é testado nos estados sem arquivo, validado mas não confirmado, confirmado, invalidado por alteração de referência e aplicado. Os fluxos de erro, substituição e persistência anteriores continuam passando.
+
+O teste do cabeçalho usa um relógio controlado: a base é lida em um horário e aplicada em outro. Confere que a última atualização registra o horário da aplicação em America/Sao_Paulo, além dos registros e do status. O FY responde ao filtro de ano. Nenhum desses horários controlados alimenta o produto.
+
+As capturas em `docs/preview-*.png` usam somente o arquivo sintético `ARQUIVO_DE_TESTE_VISUAL.xlsx`. Não contêm a planilha oficial, pacientes ou dados financeiros reais. A validação da **nova planilha atualizada** continua pendente de seu fornecimento; os resultados reais já conferidos são apenas os da base histórica de 19/10/2026.
 
 ## Limites da evidência
 

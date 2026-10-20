@@ -64,6 +64,7 @@ export interface Dataset {
   id: string;
   filename: string;
   importedAt: string;
+  updatedAt?: string;
   reference: string;
   source: SourceWorkbook;
   mappings: Mapping[];
