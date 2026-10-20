@@ -10,18 +10,26 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "playwright test"
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "tsx --test tests/*.test.ts",
+    "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {
+    "decimal.js": "^10.6.0",
+    "exceljs": "^4.4.0",
+    "fast-xml-parser": "^5.11.2",
+    "fflate": "^0.8.3",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vite": "^7.3.0"
   }
