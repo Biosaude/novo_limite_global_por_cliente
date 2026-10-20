@@ -378,14 +378,12 @@ test("aplicar base exige confirmação e registra horário da aplicação; perí
   await page.clock.setFixedTime(new Date("2026-10-20T12:00:00Z"));
   await page.goto("/");
   await manage(page);
-  await page
-    .getByLabel("Selecionar planilha Excel")
-    .setInputFiles({
-      name: "ARQUIVO_DE_TESTE.xlsx",
-      mimeType:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      buffer: await fixture(),
-    });
+  await page.getByLabel("Selecionar planilha Excel").setInputFiles({
+    name: "ARQUIVO_DE_TESTE.xlsx",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: await fixture(),
+  });
   await expect(page.locator(".preview-totals")).toContainText("201,00");
   const apply = page.getByRole("button", {
     name: "Atualizar Dashboard",
@@ -429,6 +427,81 @@ test("aplicar base exige confirmação e registra horário da aplicação; perí
   expect(
     await page
       .locator(".kpi")
+      .evaluateAll((cards) =>
+        cards.every((card) => card.scrollWidth <= card.clientWidth),
+      ),
+  ).toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("painel sem menu lateral: categoria de inadimplência consistente e gráficos em largura ampliada", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await importFixture(page);
+  await expect(page.getByRole("complementary")).toHaveCount(0);
+  const nav = page.getByRole("navigation", { name: "Navegação principal" });
+  await expect(nav.getByRole("button")).toHaveCount(5);
+  for (const button of await nav.getByRole("button").all())
+    await expect(button).toBeVisible();
+  await expect(page.locator(".kpi.overdue")).toContainText(
+    "Vencidos (inadimplência)",
+  );
+  await expect(
+    page
+      .getByRole("combobox", { name: "Categoria financeira" })
+      .locator('option[value="overdue"]'),
+  ).toHaveText("Vencidos (inadimplência)");
+  await expect(
+    page.getByRole("columnheader", {
+      name: "Vencidos (inadimplência)",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".aging-card")).toHaveCount(5);
+  const firstBand = page
+    .locator(".aging-card")
+    .filter({ hasText: "1–30 dias" });
+  await expect(firstBand).toContainText("50,20");
+  await expect(firstBand).toContainText("100%");
+  const month = page
+    .locator(".chart-panel")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "Recebimentos por mês",
+        exact: true,
+      }),
+    });
+  const aging = page
+    .locator(".chart-panel")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "Faixas de atraso · Vencidos (inadimplência)",
+        exact: true,
+      }),
+    });
+  await expect(month).toBeVisible();
+  await expect(aging).toBeVisible();
+  if (page.viewportSize()!.width > 1100) {
+    const monthBox = (await month.boundingBox())!,
+      agingBox = (await aging.boundingBox())!;
+    expect(monthBox.x).toBeLessThan(agingBox.x);
+    expect(monthBox.width).toBeGreaterThan(agingBox.width);
+    expect(Math.abs(monthBox.y - agingBox.y)).toBeLessThan(2);
+  }
+  await page
+    .getByRole("combobox", { name: "Categoria financeira" })
+    .selectOption("overdue");
+  await expect(page.locator(".kpi.global .kpi-value")).toHaveText(/50,20/);
+  await expect(page.locator(".kpi.overdue .kpi-value")).toHaveText(/50,20/);
+  await expect(page.getByText(/^Vencidos?$/i)).toHaveCount(0);
+  expect(
+    await page
+      .locator(".kpi, .aging-card")
       .evaluateAll((cards) =>
         cards.every((card) => card.scrollWidth <= card.clientWidth),
       ),

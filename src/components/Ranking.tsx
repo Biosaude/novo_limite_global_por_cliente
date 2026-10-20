@@ -1,11 +1,11 @@
 import { useState } from "react";
-import type { Group, Totals } from "../domain/types";
+import { categoryLabel, type Group, type Totals } from "../domain/types";
 import { money, percentage } from "../domain/money";
 import { EmptyState } from "./EmptyState";
 const columns = [
   ["name", "Nome"],
   ["upcoming", "A Vencer"],
-  ["overdue", "Vencido"],
+  ["overdue", categoryLabel.overdue],
   ["received", "Recebido YTD"],
   ["global", "Limite Global"],
   ["participation", "Participação"],

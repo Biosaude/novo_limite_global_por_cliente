@@ -7,7 +7,7 @@ Dashboard financeiro em React, TypeScript e Vite. A primeira etapa funciona inte
 1. Abra o site disponibilizado pelo responsável pelo projeto. Nesta entrega, o código segue em branch para revisão via PR; atualizar a aplicação na Vercel é uma ação separada do responsável.
 2. Acesse **Gerenciar Base**. Use **Baixar Modelo da Base** caso precise da estrutura oficial vazia ou clique em **Selecionar Nova Base** para escolher o arquivo `.xlsx`.
 3. Informe a data da extração. `19/10/2026` é a referência histórica inicial, não a data atual automática.
-4. Confira todas as abas, a linha do cabeçalho e as colunas. Para A Vencer e Vencido, mapeie **saldo em aberto**; para Recebido, **valor efetivamente recebido** e **data de recebimento**. Não use o valor nominal da duplicata.
+4. Confira todas as abas, a linha do cabeçalho e as colunas. Para A Vencer e Vencidos (inadimplência), mapeie **saldo em aberto**; para Recebido, **valor efetivamente recebido** e **data de recebimento**. Não use o valor nominal da duplicata.
 5. A prévia é calculada automaticamente quando as abas e colunas são reconhecidas. Confira quantidade de registros, valores e ocorrências. Se ajustar o mapeamento ou a referência, clique em **Validar estrutura e calcular totais** para gerar uma nova prévia.
 6. Marque a confirmação da conferência na prévia e clique em **Atualizar Dashboard**, nos três controles principais. O botão permanece desabilitado sem uma base validada e confirmada. Erros de valores ou de datas essenciais de recebimento bloqueiam a aplicação. Advertências não excluem registros nem bloqueiam o dashboard.
 7. Use Visão geral, Clientes, Representantes e Auditoria. Clique no nome de um grupo para abrir os títulos e consultar todas as células originais de um registro.
@@ -18,7 +18,9 @@ O sistema aceita `.xlsx` sem senha, até 20 MB, até 100.000 linhas de dados e 2
 
 ## Interface e modelo Excel
 
-O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). As cinco seções de navegação são preservadas.
+O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). As cinco seções de navegação são preservadas no topo; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os quatro KPIs usam a largura do painel, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
+
+O rótulo **Vencidos (inadimplência)** é compartilhado entre cards, filtros, rankings, detalhamento, prévia da importação e legendas. Os nomes originais das abas, colunas e arquivos Excel são preservados para rastreabilidade e compatibilidade com a planilha oficial. As faixas de inadimplência usam a mesma regra já existente: 1–30, 31–60, 61–90, 91–180 e acima de 180 dias; valores em faixas de diagnóstico também são preservados.
 
 O cabeçalho exibe o exercício selecionado (**FY**), a data e o horário da última aplicação da base (fuso America/Sao_Paulo), a quantidade total de registros e o status. Essa atualização só é registrada quando **Atualizar Dashboard** termina com sucesso; gerar uma prévia ou registrar uma justificativa não altera a data de atualização da base.
 
@@ -33,13 +35,13 @@ As capturas abaixo usam exclusivamente **ARQUIVO_DE_TESTE_VISUAL.xlsx**, gerado 
 ## Regras financeiras
 
 - **A Vencer:** soma de `Vr.aberto` na categoria A Vencer.
-- **Vencido:** soma de `Vr.aberto` na categoria Vencido.
+- **Vencidos (inadimplência):** soma de `Vr.aberto` na categoria de inadimplência, preservando a classificação original do Excel.
 - **Recebido YTD:** soma de `Vr.recebido` com `Dt.recebimento` entre 1º de janeiro do ano escolhido e o menor valor entre o fim do mês selecionado e a data de referência.
 - **Limite Global:** soma dos três componentes acima. Não é um crédito contratual concedido.
 
 Valores são convertidos com Decimal.js para centavos inteiros, somados dentro da faixa segura de inteiros e formatados em reais somente na interface. Valores inválidos, com precisão superior a centavos ou com overflow são bloqueantes. Valores negativos são preservados e advertidos. Datas civis e diferenças de dias usam UTC para evitar variações de fuso horário.
 
-**Saldos de posição não são séries históricas.** Os filtros de ano e mês alteram o período dos recebimentos; os saldos A Vencer e Vencido continuam sendo os da extração importada. A interface informa explicitamente a data da posição e o intervalo YTD. Não se reclassificam títulos automaticamente com a data de hoje.
+**Saldos de posição não são séries históricas.** Os filtros de ano e mês alteram o período dos recebimentos; os saldos A Vencer e Vencidos (inadimplência) continuam sendo os da extração importada. A interface informa explicitamente a data da posição e o intervalo YTD. Não se reclassificam títulos automaticamente com a data de hoje.
 
 Os filtros globais de cliente, representante e categoria atualizam cards, gráficos, rankings e auditoria. A pesquisa e a ordenação dentro da tabela atuam somente no ranking exibido. Valores recebidos fora do YTD são preservados na origem e voltam a compor as consultas quando seu período é selecionado. Os gráficos mensais incluem apenas meses presentes na seleção. Composição percentual não é desenhada para saldos negativos, pois um gráfico de setores seria enganoso; o comparativo continua disponível.
 

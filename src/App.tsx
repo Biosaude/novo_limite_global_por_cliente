@@ -5,7 +5,6 @@ import {
   ArrowUpRight,
   CalendarDays,
   Check,
-  ChevronRight,
   Database,
   FileSpreadsheet,
   LayoutDashboard,
@@ -20,6 +19,7 @@ import { ImportManager } from "./components/ImportManager";
 import { AuditTable } from "./components/AuditTable";
 import { Ranking } from "./components/Ranking";
 import { DetailDialog } from "./components/DetailDialog";
+import { InadimplenciaDistribution } from "./components/InadimplenciaDistribution";
 import {
   type Dataset,
   type Filters,
@@ -211,47 +211,6 @@ export default function App() {
   }
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <a
-          className="brand"
-          href="#"
-          onClick={() => setView("dashboard")}
-          aria-label="BIOSAÚDE — início"
-        >
-          <span className="brand-symbol">
-            B<span>+</span>
-          </span>
-          <div>
-            BIOSAÚDE<small>PRODUTOS HOSPITALARES</small>
-          </div>
-        </a>
-        <div className="workspace-label">INTELIGÊNCIA FINANCEIRA</div>
-        <nav aria-label="Navegação principal">
-          {navigation.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              className={view === id ? "nav-item active" : "nav-item"}
-              aria-current={view === id ? "page" : undefined}
-              onClick={() => setView(id)}
-            >
-              <Icon size={19} />
-              {label}
-              {view === id && <ChevronRight size={15} />}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <span className="secure-icon">
-            <ShieldCheck size={20} />
-          </span>
-          <strong>Seus dados, sob controle</strong>
-          <p>
-            Planilhas processadas no seu navegador. Sem envio dos dados
-            financeiros.
-          </p>
-          <span className="version">POSIÇÃO FINANCEIRA · V1.1</span>
-        </div>
-      </aside>
       <div className="main-shell">
         <header className="topbar">
           <div className="dashboard-identity">
@@ -300,6 +259,19 @@ export default function App() {
           </div>
         </header>
         <main>
+          <nav className="top-navigation" aria-label="Navegação principal">
+            {navigation.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                className={view === id ? "nav-item active" : "nav-item"}
+                aria-current={view === id ? "page" : undefined}
+                onClick={() => setView(id)}
+              >
+                <Icon size={17} />
+                {label}
+              </button>
+            ))}
+          </nav>
           <div className="page-heading">
             <div>
               <div className="eyebrow">PAINEL EXECUTIVO</div>
@@ -363,124 +335,141 @@ export default function App() {
           ) : (
             <>
               <section className="filters" aria-label="Filtros financeiros">
-                <span className="filter-label">
-                  <ListFilter size={17} />
-                  Filtros
-                </span>
-                <label>
-                  Ano
-                  <select
-                    aria-label="Ano"
-                    value={filters.year}
-                    disabled={!active}
-                    onChange={(event) =>
-                      selectFilter("year", event.target.value)
-                    }
-                  >
-                    {!active && <option value="">Sem exercício</option>}
-                    {years.map((year) => (
-                      <option key={year}>{year}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Mês de referência
-                  <select
-                    aria-label="Mês de referência"
-                    value={filters.month}
-                    disabled={!active}
-                    onChange={(event) =>
-                      selectFilter("month", event.target.value)
-                    }
-                  >
-                    {!active && <option value="">Sem referência</option>}
-                    {Array.from({ length: 12 }, (_, index) =>
-                      String(index + 1).padStart(2, "0"),
-                    ).map((month) => (
-                      <option
-                        key={month}
-                        value={month}
-                        disabled={
-                          !!active &&
-                          filters.year === active.reference.slice(0, 4) &&
-                          month > active.reference.slice(5, 7)
-                        }
-                      >
-                        {new Date(
-                          2026,
-                          Number(month) - 1,
-                          1,
-                        ).toLocaleDateString("pt-BR", { month: "long" })}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Cliente
-                  <select
-                    aria-label="Cliente"
-                    value={filters.client}
-                    disabled={!active}
-                    onChange={(event) =>
-                      selectFilter("client", event.target.value)
-                    }
-                  >
-                    <option value="">Todos</option>
-                    {allClients.map((client) => (
-                      <option key={client}>{client}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Representante
-                  <select
-                    aria-label="Representante"
-                    value={filters.representative}
-                    disabled={!active}
-                    onChange={(event) =>
-                      selectFilter("representative", event.target.value)
-                    }
-                  >
-                    <option value="">Todos</option>
-                    {allRepresentatives.map((rep) => (
-                      <option key={rep}>{rep}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Categoria financeira
-                  <select
-                    aria-label="Categoria financeira"
-                    value={filters.category}
-                    disabled={!active}
-                    onChange={(event) =>
-                      selectFilter("category", event.target.value)
-                    }
-                  >
-                    <option value="">Todas</option>
-                    {Object.entries(categoryLabel).map(([key, value]) => (
-                      <option key={key} value={key}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {active && (
-                  <button
-                    className="text-button"
-                    onClick={() => {
-                      setFilters(initialFilters(active));
-                      setDetail(null);
-                    }}
-                  >
-                    Limpar filtros
-                  </button>
-                )}
-                <span className="filter-help">
-                  {active
-                    ? `Saldos fixos da posição de ${displayDate(active.reference)}. Recebido YTD de 01/01/${filters.year} até ${displayDate(cutoff(active.reference, filters.year, filters.month))}. Alterar o período não reconstrói saldos históricos.`
-                    : "Disponíveis após importação"}
-                </span>
+                <div className="filter-heading">
+                  <div>
+                    <h2>
+                      <ListFilter size={17} />
+                      Filtros
+                    </h2>
+                    <p>
+                      Dimensões financeiras integradas · saldos de posição e
+                      recebimentos acumulados no exercício
+                    </p>
+                  </div>{" "}
+                  {active && (
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        setFilters(initialFilters(active));
+                        setDetail(null);
+                      }}
+                    >
+                      Limpar filtros
+                    </button>
+                  )}
+                </div>
+                <div className="filter-fields">
+                  <label>
+                    Ano
+                    <select
+                      aria-label="Ano"
+                      value={filters.year}
+                      disabled={!active}
+                      onChange={(event) =>
+                        selectFilter("year", event.target.value)
+                      }
+                    >
+                      {!active && <option value="">Sem exercício</option>}
+                      {years.map((year) => (
+                        <option key={year}>{year}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Mês de referência
+                    <select
+                      aria-label="Mês de referência"
+                      value={filters.month}
+                      disabled={!active}
+                      onChange={(event) =>
+                        selectFilter("month", event.target.value)
+                      }
+                    >
+                      {!active && <option value="">Sem referência</option>}
+                      {Array.from({ length: 12 }, (_, index) =>
+                        String(index + 1).padStart(2, "0"),
+                      ).map((month) => (
+                        <option
+                          key={month}
+                          value={month}
+                          disabled={
+                            !!active &&
+                            filters.year === active.reference.slice(0, 4) &&
+                            month > active.reference.slice(5, 7)
+                          }
+                        >
+                          {new Date(
+                            2026,
+                            Number(month) - 1,
+                            1,
+                          ).toLocaleDateString("pt-BR", { month: "long" })}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Cliente
+                    <select
+                      aria-label="Cliente"
+                      value={filters.client}
+                      disabled={!active}
+                      onChange={(event) =>
+                        selectFilter("client", event.target.value)
+                      }
+                    >
+                      <option value="">Todos</option>
+                      {allClients.map((client) => (
+                        <option key={client}>{client}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Representante
+                    <select
+                      aria-label="Representante"
+                      value={filters.representative}
+                      disabled={!active}
+                      onChange={(event) =>
+                        selectFilter("representative", event.target.value)
+                      }
+                    >
+                      <option value="">Todos</option>
+                      {allRepresentatives.map((rep) => (
+                        <option key={rep}>{rep}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Categoria financeira
+                    <select
+                      aria-label="Categoria financeira"
+                      value={filters.category}
+                      disabled={!active}
+                      onChange={(event) =>
+                        selectFilter("category", event.target.value)
+                      }
+                    >
+                      <option value="">Todas</option>
+                      {Object.entries(categoryLabel).map(([key, value]) => (
+                        <option key={key} value={key}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="filter-footer">
+                  <span>
+                    {active
+                      ? `Base confirmada até ${displayDate(active.reference)} · ${records.length.toLocaleString("pt-BR")} registros na seleção`
+                      : "Nenhuma base financeira carregada"}
+                  </span>
+                  <span className="filter-help">
+                    {active
+                      ? `Saldos fixos da posição de ${displayDate(active.reference)}. Recebido YTD de 01/01/${filters.year} até ${displayDate(cutoff(active.reference, filters.year, filters.month))}. Alterar o período não reconstrói saldos históricos.`
+                      : "Disponíveis após importação"}
+                  </span>
+                </div>
               </section>
               {view === "dashboard" && (
                 <>
@@ -492,7 +481,7 @@ export default function App() {
                       {
                         key: "global",
                         title: "Limite Global",
-                        description: "A Vencer + Vencido + Recebido YTD",
+                        description: `A Vencer + ${categoryLabel.overdue} + Recebido YTD`,
                         icon: Wallet,
                         className: "global",
                       },
@@ -505,7 +494,7 @@ export default function App() {
                       },
                       {
                         key: "overdue",
-                        title: "Vencido",
+                        title: categoryLabel.overdue,
                         description: "Saldos em aberto em atraso",
                         icon: ArrowUpRight,
                         className: "overdue",
@@ -567,6 +556,12 @@ export default function App() {
                     Limite Global é um indicador financeiro e não representa
                     crédito contratual concedido ao cliente.
                   </p>
+                  <InadimplenciaDistribution
+                    records={records}
+                    reference={active?.reference ?? ""}
+                    loaded={!!active}
+                    overdue={summary.overdue}
+                  />
                   <Suspense
                     fallback={<p role="status">Carregando gráficos…</p>}
                   >
