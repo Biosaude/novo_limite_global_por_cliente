@@ -21,7 +21,7 @@ async function activateCreditFixture(page: Page, remember = false) {
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       buffer: await creditFixture(),
     });
-  await expect(page.locator(".preview-totals")).toContainText("250,00");
+  await expect(page.locator(".preview-totals")).toContainText("150,00");
   if (remember)
     await page.getByLabel("Lembrar a nova base neste navegador").check();
   await page
@@ -250,7 +250,7 @@ test("crédito na planilha oficial: 169 clientes e exposição conciliada no nav
   await page
     .getByLabel("Selecionar planilha Excel")
     .setInputFiles(process.env.BIOSAUDE_TEST_WORKBOOK!);
-  await expect(page.locator(".preview-totals")).toContainText("93.286.081,75", {
+  await expect(page.locator(".preview-totals")).toContainText("36.286.262,45", {
     timeout: 30000,
   });
   await page

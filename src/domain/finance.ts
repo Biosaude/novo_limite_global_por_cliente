@@ -1,6 +1,8 @@
 import type { Dataset, Filters, FinancialRecord, Group, Totals } from "./types";
 import { cutoff, daysBetween } from "./dates";
 import { sum } from "./money";
+import Decimal from "decimal.js";
+const AgingDecimal = Decimal.clone({ precision: 40 });
 export function initialFilters(dataset: Dataset): Filters {
   return {
     year: dataset.reference.slice(0, 4),
@@ -44,6 +46,7 @@ export function totals(records: FinancialRecord[]): Totals {
     upcoming,
     overdue,
     received,
+    exposure: sum([upcoming, overdue]),
     global: sum([upcoming, overdue, received]),
     count: records.length,
   };
@@ -97,6 +100,35 @@ export function aging(records: FinancialRecord[], reference: string) {
     values[index].value = sum([values[index].value, record.cents ?? 0]);
   }
   return values;
+}
+/** Aging da posição original, ponderado pelos centavos de cada lançamento vencido.
+ * Dados divergentes com saldo não zero impedem publicar uma média incompleta.
+ */
+export function weightedOverdueAging(records: FinancialRecord[], reference: string) {
+  let numerator = new AgingDecimal(0);
+  const eligible: number[] = [];
+  let excludedCount = 0;
+  for (const record of records) {
+    if (record.category !== "overdue") continue;
+    const amount = record.cents;
+    if (amount === 0) continue;
+    const days = record.due ? daysBetween(reference, record.due) : NaN;
+    if (amount === null || amount < 0 || !Number.isFinite(days) || days <= 0) {
+      excludedCount++;
+      continue;
+    }
+    eligible.push(amount);
+    numerator = numerator.plus(new AgingDecimal(amount).times(days));
+  }
+  const eligibleCents = sum(eligible);
+  return {
+    days: eligibleCents > 0 && excludedCount === 0
+      ? numerator.div(eligibleCents).toNumber()
+      : null,
+    eligibleCents,
+    eligibleCount: eligible.length,
+    excludedCount,
+  };
 }
 export function monthly(records: FinancialRecord[]) {
   const groups = new Map<string, number[]>();

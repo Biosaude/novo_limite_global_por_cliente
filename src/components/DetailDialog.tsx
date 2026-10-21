@@ -55,7 +55,7 @@ export function DetailDialog({
         <div>
           <h2>{title}</h2>
           <p>
-            {matched.length} registros · Limite Global: {money(summary.global)}
+            {matched.length} registros · Movimentação gerencial: {money(summary.global)}
           </p>
         </div>
         <button className="secondary" autoFocus onClick={onClose}>

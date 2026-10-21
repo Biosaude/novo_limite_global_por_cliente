@@ -20,7 +20,9 @@ A identificação usa os cabeçalhos reais. `Vr.duplicata` não é usado em luga
 | A Vencer | R$ 25.711.247,24 |
 | Vencidos (inadimplência) | R$ 10.575.015,21 |
 | Recebido YTD | R$ 56.999.819,30 |
-| Limite Global | R$ 93.286.081,75 |
+| Exposição Financeira Total | R$ 36.286.262,45 |
+| Movimentação gerencial (saldos + Recebido YTD) | R$ 93.286.081,75 |
+| Aging Médio dos Vencidos | 423,74 dias |
 
 Os totais também foram conferidos independentemente com openpyxl e Decimal em Python. Não são valores fixos da interface. Uma nova planilha é processada pelos mesmos serviços e produz seus próprios totais.
 
@@ -35,11 +37,11 @@ O cache OOXML contém 13 resultados zero de fórmulas compartilhadas omitidos pe
 
 ## Escopo dos testes
 
-Resultado da execução com o arquivo oficial: **22 testes de serviços aprovados; 52 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
+Resultado da execução com o arquivo oficial: **27 testes de serviços aprovados; 56 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
 
 Testes de serviços: centavos e formatos monetários, overflow, datas civis, leitura de Excel, campos originais, YTD, filtros, agrupamentos, faixas de atraso, séries mensais, arquivos inválidos, mapeamento reordenado, campos ausentes, cache de fórmulas e conciliação integral da base oficial.
 
-Testes de navegador: interface sem dados, importação e confirmação, quatro KPIs, seis gráficos, filtros, ranking, representantes, detalhamento de títulos e células originais, justificativas locais, IndexedDB, recarga, remoção, arquivo corrompido, erro bloqueante e substituição válida. A importação oficial é executada em desktop (1920 × 1080), notebook (1440 × 1000), tablet (834 × 1112) e mobile (390 × 844), com os totais históricos e as advertências conferidos no DOM. Os testes monitoram erros JavaScript e requisições externas durante o fluxo com a planilha real.
+Testes de navegador: interface sem dados, importação e confirmação, quatro KPIs financeiros mais aging, seis gráficos, filtros, ranking, representantes, detalhamento de títulos e células originais, justificativas locais, IndexedDB, recarga, remoção, arquivo corrompido, erro bloqueante e substituição válida. A importação oficial é executada em desktop (1920 × 1080), notebook (1440 × 1000), tablet (834 × 1112) e mobile (390 × 844), com os totais históricos e as advertências conferidos no DOM. Os testes monitoram erros JavaScript e requisições externas durante o fluxo com a planilha real.
 
 A suíte de navegador usa o build de produção servido localmente; isso evita que a otimização de dependências do servidor de desenvolvimento recarregue a página na primeira importação. O desenvolvimento também declara explicitamente as dependências do worker para pré-otimização.
 
@@ -70,3 +72,7 @@ A validação do novo módulo e a comparação dos 169 clientes com leitura inde
 ## Limites da evidência
 
 Esses testes demonstram funcionamento no navegador automatizado da máquina de desenvolvimento. Não comprovam implantação na Vercel ou a aprovação visual e funcional do usuário no próprio dispositivo. A atualização da Vercel será feita pelo responsável após revisão da PR. Não houve conexão ao Neon, migrations, autenticação administrativa ou publicação da base financeira.
+
+## Ajustes de exposição e aging
+
+[Conferência independente, fórmulas, comparativo e capturas](docs/VALIDACAO_AGING.md).

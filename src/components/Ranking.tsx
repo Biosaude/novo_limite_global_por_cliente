@@ -7,7 +7,7 @@ const columns = [
   ["upcoming", "A Vencer"],
   ["overdue", categoryLabel.overdue],
   ["received", "Recebido YTD"],
-  ["global", "Limite Global"],
+  ["global", "Movimentação gerencial"],
   ["participation", "Participação"],
   ["count", "Registros"],
 ] as const;
@@ -60,7 +60,7 @@ export function Ranking({
           <p>
             {groups.length.toLocaleString("pt-BR")}{" "}
             {representative ? "representantes" : "clientes"} · totais e
-            participação respeitam os filtros globais
+            participação sobre saldos + Recebido YTD; respeitam os filtros globais
           </p>
         </div>
         <label className="search">

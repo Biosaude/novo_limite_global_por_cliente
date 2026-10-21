@@ -89,6 +89,8 @@ export interface Totals {
   upcoming: number;
   overdue: number;
   received: number;
+  exposure: number;
+  /** Movimentação gerencial: saldos da posição + recebimentos YTD; não é dívida. */
   global: number;
   count: number;
 }

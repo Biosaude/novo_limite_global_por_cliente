@@ -53,6 +53,7 @@ test("Excel: preserva registros e originais; não usa nominal; YTD respeita iní
     upcoming: 10010,
     overdue: 5020,
     received: 5070,
+    exposure: 15030,
     global: 20100,
     count: 4,
   });
@@ -213,6 +214,7 @@ test(
       upcoming: 2571124724,
       overdue: 1057501521,
       received: 5699981930,
+      exposure: 3628626245,
       global: 9328608175,
       count: 5099,
     });
@@ -329,6 +331,7 @@ test("modelo Excel vazio conserva o esquema oficial e aceita preenchimento pelo 
     upcoming: 101,
     overdue: 202,
     received: 303,
+    exposure: 303,
     global: 606,
     count: 3,
   });
