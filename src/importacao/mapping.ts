@@ -35,6 +35,9 @@ export const normalized = (value: string) =>
     .replace(/[^a-z0-9]/g, "");
 const aliases = {
   client: ["nomecliente", "cliente", "razaosocial"],
+  issued: ["dtemissao", "dataemissao", "emissao"],
+  document: ["duplicata", "numerodaduplicata"],
+  installment: ["parcela", "numerodaparcela"],
   title: ["numerodotitulocompleto", "titulocompleto", "titulo"],
   representative: ["nomerepresentante", "representante"],
   due: ["dtvencimento", "datavencimento", "vencimento"],

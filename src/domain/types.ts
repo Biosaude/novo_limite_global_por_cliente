@@ -27,6 +27,9 @@ export const fieldLabels = {
   due: "Vencimento",
   received: "Recebimento",
   days: "Dias informados",
+  issued: "Emissão",
+  document: "Duplicata",
+  installment: "Parcela",
 };
 export type Field = keyof typeof fieldLabels;
 export interface Mapping {
@@ -47,6 +50,9 @@ export interface FinancialRecord {
   due: string | null;
   received: string | null;
   reportedDays: number | null;
+  issued?: string | null;
+  document?: string;
+  installment?: string;
 }
 export interface Issue {
   id: string;

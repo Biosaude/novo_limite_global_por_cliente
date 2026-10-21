@@ -35,7 +35,7 @@ O cache OOXML contém 13 resultados zero de fórmulas compartilhadas omitidos pe
 
 ## Escopo dos testes
 
-Resultado da execução com o arquivo oficial: **14 testes de serviços aprovados; 32 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
+Resultado da execução com o arquivo oficial: **22 testes de serviços aprovados; 52 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
 
 Testes de serviços: centavos e formatos monetários, overflow, datas civis, leitura de Excel, campos originais, YTD, filtros, agrupamentos, faixas de atraso, séries mensais, arquivos inválidos, mapeamento reordenado, campos ausentes, cache de fórmulas e conciliação integral da base oficial.
 
@@ -62,6 +62,10 @@ A categoria passa a ser exibida como **Vencidos (inadimplência)** em todos os r
 A navegação foi movida para o topo, sem elemento lateral. Os filtros usam um bloco em grade com o status da seleção. As faixas da inadimplência reutilizam a função de agrupamento por atraso já existente, com valores e participações reais da seleção; eventuais faixas de diagnóstico com valor são preservadas. Em telas largas, o gráfico mensal ocupa a área principal e as faixas de atraso ficam ao lado.
 
 O novo fluxo de navegador verifica a ausência do menu lateral, o acesso às cinco seções no topo, o rótulo uniforme, os valores das faixas, a resposta ao filtro da categoria e a geometria da linha principal de gráficos. Também verifica que os cards e a página não ultrapassam seus contêineres em desktop, notebook, tablet e celular.
+
+## Análise de Crédito
+
+A validação do novo módulo e a comparação dos 169 clientes com leitura independente em Python estão documentadas em [docs/VALIDACAO_CREDITO.md](docs/VALIDACAO_CREDITO.md). Metodologia, suficiência, janela observada, tratamento de pagamentos parciais e proposta de política estão em [docs/METODOLOGIA_CREDITO.md](docs/METODOLOGIA_CREDITO.md). A recomendação numérica permanece pendente de política aprovada.
 
 ## Limites da evidência
 

@@ -171,8 +171,9 @@ test("detalhamento, originais, auditoria e justificativa local funcionam e persi
   ).toBeVisible();
   await manage(page);
   await page
-    .getByRole("button", { name: "Remover base deste navegador" })
+    .getByRole("button", { name: "Desativar base atual (preservar histórico)" })
     .click();
+  await expect(page.locator(".status")).toHaveText("Sem base importada");
   await page.reload();
   await expect(page.locator(".status")).toHaveText("Sem base importada");
 });
@@ -445,7 +446,7 @@ test("painel sem menu lateral: categoria de inadimplência consistente e gráfic
   await importFixture(page);
   await expect(page.getByRole("complementary")).toHaveCount(0);
   const nav = page.getByRole("navigation", { name: "Navegação principal" });
-  await expect(nav.getByRole("button")).toHaveCount(5);
+  await expect(nav.getByRole("button")).toHaveCount(6);
   for (const button of await nav.getByRole("button").all())
     await expect(button).toBeVisible();
   await expect(page.locator(".kpi.overdue")).toContainText(
@@ -468,22 +469,18 @@ test("painel sem menu lateral: categoria de inadimplência consistente e gráfic
     .filter({ hasText: "1–30 dias" });
   await expect(firstBand).toContainText("50,20");
   await expect(firstBand).toContainText("100%");
-  const month = page
-    .locator(".chart-panel")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Recebimentos por mês",
-        exact: true,
-      }),
-    });
-  const aging = page
-    .locator(".chart-panel")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Faixas de atraso · Vencidos (inadimplência)",
-        exact: true,
-      }),
-    });
+  const month = page.locator(".chart-panel").filter({
+    has: page.getByRole("heading", {
+      name: "Recebimentos por mês",
+      exact: true,
+    }),
+  });
+  const aging = page.locator(".chart-panel").filter({
+    has: page.getByRole("heading", {
+      name: "Faixas de atraso · Vencidos (inadimplência)",
+      exact: true,
+    }),
+  });
   await expect(month).toBeVisible();
   await expect(aging).toBeVisible();
   if (page.viewportSize()!.width > 1100) {

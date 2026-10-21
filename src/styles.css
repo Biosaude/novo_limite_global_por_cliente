@@ -2016,3 +2016,243 @@ main {
     grid-column: 1;
   }
 }
+/* Análise gerencial de crédito e histórico de posições. */
+.credit-module {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.credit-module > .info-banner {
+  margin-bottom: 0;
+}
+.credit-controls,
+.policy-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+  align-items: end;
+}
+.credit-controls label,
+.policy-fields label,
+.proposal-reason,
+.base-history label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 0;
+}
+.credit-controls select,
+.policy-editor input,
+.proposal-reason textarea,
+.base-history select,
+.credit-dialog select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--navy);
+  border-radius: 5px;
+  padding: 10px;
+  font: inherit;
+}
+.credit-controls span {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 10px;
+  line-height: 1.6;
+}
+.credit-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.credit-kpis .kpi {
+  border-left-color: var(--accent);
+}
+.credit-kpi-value {
+  display: block;
+  font-size: clamp(16px, 1.6vw, 24px);
+  margin: 14px 0 10px;
+  letter-spacing: -0.4px;
+  overflow-wrap: anywhere;
+}
+.credit-kpis .kpi p {
+  min-height: 25px;
+  font-size: 11px;
+}
+.credit-charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.credit-chart {
+  min-width: 0;
+}
+.credit-chart:last-child {
+  grid-column: 1 / -1;
+}
+.credit-chart-content {
+  padding-top: 20px;
+}
+.credit-pending {
+  white-space: normal;
+  min-width: 160px;
+  color: var(--muted);
+  text-align: left;
+}
+.risk-badge {
+  padding: 6px 9px;
+  font-size: 10px;
+  border-radius: 5px;
+  background: #edf2f8;
+  color: #435c7d;
+  display: inline-block;
+  white-space: nowrap;
+}
+.risk-critical,
+.risk-high {
+  background: #fff0f1;
+  color: #b02130;
+}
+.risk-moderate {
+  background: #fff5de;
+  color: #8e681e;
+}
+.risk-provisional {
+  display: block;
+  font-size: 9px;
+  margin-top: 5px;
+  color: var(--muted);
+}
+.credit-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.credit-metrics > div {
+  background: #f6f8fc;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 13px;
+  min-width: 0;
+}
+.credit-metrics dt {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.credit-metrics dd {
+  font-size: 14px;
+  font-weight: 650;
+  margin: 7px 0 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.credit-reasons {
+  font-size: 12px;
+  color: #526882;
+  line-height: 1.8;
+  padding-left: 21px;
+}
+.credit-dialog h3 {
+  font-size: 14px;
+  margin-top: 26px;
+}
+.credit-dialog > label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 300px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.policy-editor summary {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--navy);
+}
+.policy-editor .info-banner {
+  margin-top: 20px;
+}
+.policy-editor .policy-fields {
+  margin: 20px 0;
+}
+.policy-editor td {
+  min-width: 120px;
+}
+.policy-editor td:first-child {
+  min-width: 200px;
+  white-space: normal;
+}
+.policy-editor h3 {
+  font-size: 13px;
+  margin-top: 28px;
+}
+.proposal-reason textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.proposal-reason {
+  margin: 20px 0;
+}
+.proposal-history {
+  padding: 0;
+  list-style: none;
+}
+.proposal-history > li {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 12px 0;
+  font-size: 11px;
+}
+.proposal-history pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  font-size: 10px;
+}
+.base-history {
+  margin-top: 22px;
+}
+.base-history label {
+  margin: 20px 0 12px;
+}
+@media (max-width: 1000px) {
+  .credit-controls,
+  .policy-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .credit-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .credit-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  .credit-charts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .credit-controls,
+  .policy-fields {
+    grid-template-columns: 1fr;
+  }
+  .credit-metrics {
+    grid-template-columns: 1fr;
+  }
+  .credit-kpi-value {
+    font-size: 16px;
+  }
+  .credit-kpis .kpi-label {
+    min-height: 36px;
+  }
+}
+.policy-editor input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  flex-shrink: 0;
+}
