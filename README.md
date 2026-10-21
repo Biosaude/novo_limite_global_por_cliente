@@ -10,7 +10,7 @@ Dashboard financeiro em React, TypeScript e Vite. A primeira etapa funciona inte
 4. Confira todas as abas, a linha do cabeçalho e as colunas. Para A Vencer e Vencidos (inadimplência), mapeie **saldo em aberto**; para Recebido, **valor efetivamente recebido** e **data de recebimento**. Não use o valor nominal da duplicata.
 5. A prévia é calculada automaticamente quando as abas e colunas são reconhecidas. Confira quantidade de registros, valores e ocorrências. Se ajustar o mapeamento ou a referência, clique em **Validar estrutura e calcular totais** para gerar uma nova prévia.
 6. Marque a confirmação da conferência na prévia e clique em **Atualizar Dashboard**, nos três controles principais. O botão permanece desabilitado sem uma base validada e confirmada. Erros de valores ou de datas essenciais de recebimento bloqueiam a aplicação. Advertências não excluem registros nem bloqueiam o dashboard.
-7. Use Visão geral, Clientes, Representantes e Auditoria. Clique no nome de um grupo para abrir os títulos e consultar todas as células originais de um registro.
+7. Use Visão geral, Clientes, Representantes, Auditoria e **Análise de Crédito**. Clique no nome de um grupo para abrir os títulos e consultar todas as células originais de um registro.
 
 A base anterior permanece ativa enquanto um novo arquivo é processado, se houver erros ou enquanto não houver confirmação explícita da substituição. Abas desconhecidas exigem categoria definida; não são ignoradas automaticamente. Cabeçalhos repetidos continuam distinguíveis pelo número da coluna. Linhas vazias e conteúdo anterior ao cabeçalho ficam preservados na origem, com suas contagens na conferência, sem entrar como títulos financeiros.
 
@@ -18,7 +18,7 @@ O sistema aceita `.xlsx` sem senha, até 20 MB, até 100.000 linhas de dados e 2
 
 ## Interface e modelo Excel
 
-O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). As cinco seções de navegação são preservadas no topo; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os quatro KPIs usam a largura do painel, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
+O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). As seções de navegação, incluindo Análise de Crédito, ficam no topo; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os quatro KPIs usam a largura do painel, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
 
 O rótulo **Vencidos (inadimplência)** é compartilhado entre cards, filtros, rankings, detalhamento, prévia da importação e legendas. Os nomes originais das abas, colunas e arquivos Excel são preservados para rastreabilidade e compatibilidade com a planilha oficial. As faixas de inadimplência usam a mesma regra já existente: 1–30, 31–60, 61–90, 91–180 e acima de 180 dias; valores em faixas de diagnóstico também são preservados.
 
@@ -45,6 +45,26 @@ Valores são convertidos com Decimal.js para centavos inteiros, somados dentro d
 
 Os filtros globais de cliente, representante e categoria atualizam cards, gráficos, rankings e auditoria. A pesquisa e a ordenação dentro da tabela atuam somente no ranking exibido. Valores recebidos fora do YTD são preservados na origem e voltam a compor as consultas quando seu período é selecionado. Os gráficos mensais incluem apenas meses presentes na seleção. Composição percentual não é desenhada para saldos negativos, pois um gráfico de setores seria enganoso; o comparativo continua disponível.
 
+## Análise de Crédito por Cliente
+
+A seção **Análise de Crédito** acompanha automaticamente a base validada e ativada. Escolha o cliente, consulte exposição, inadimplência, recebimentos YTD, pontualidade por lançamento/título, prazos de pagamento, faixas de atraso e limite-base **provisório**. Clique no cliente para abrir o detalhamento e a origem de cada registro. Valores nominais não são usados como dívida nem recebimento.
+
+O risco apresentado é **risco observado — prévia de critérios propostos**. Dados insuficientes não recebem uma classificação artificial. A base estimada usa recebimentos de operações a prazo como proxy, com janela observada de calendário e prazo contratual mediano por título; não representa volume completo de vendas. Confira a metodologia e a cobertura de dados no detalhamento.
+
+Sem política aprovada, a recomendação permanece **Pendente de política de crédito**. Não há crédito aprovado ou disponibilidade autorizada gerada pelo frontend. A proposta de parâmetros pode ser editada e salva com justificativa em histórico local. Esse salvamento não aprova política ou limite e não equivale a uma decisão administrativa autenticada. A estrutura de aprovações futuras está separada das propostas locais.
+
+Os filtros globais selecionam os clientes da análise. A exposição individual considera a posição completa do cliente, incluindo representantes e categorias, para não ocultar dívidas ao filtrar recebimentos. Ano e mês delimitam o histórico recebido, mantendo os saldos da posição ativa.
+
+A importação preserva as posições anteriores. Em **Gerenciar Base → Histórico de posições financeiras**, reative uma versão para analisar aquela referência isoladamente. Não são combinadas linhas de diferentes versões. A migração de bases antigas no IndexedDB preserva dados e recupera emissão/duplicata/parcela pelos cabeçalhos originais.
+
+- [Metodologia e proposta de política para revisão](docs/METODOLOGIA_CREDITO.md)
+- [Validação financeira independente](docs/VALIDACAO_CREDITO.md)
+- [Prévia do módulo — arquivo de teste](docs/preview-credito-desktop.png)
+- [Prévia individual — arquivo de teste](docs/preview-credito-detalhe.png)
+- [Prévia mobile — arquivo de teste](docs/preview-credito-mobile.png)
+
+Essas imagens usam somente **ARQUIVO_DE_TESTE_CREDITO.xlsx**, sintético e identificado, sem resultados oficiais. Não houve deploy do módulo.
+
 ## Auditoria
 
 São verificadas ausências de cliente/título/representante/vencimento, valores negativos ou inválidos, inconsistências de categoria e vencimento, diferenças dos dias informados e possíveis repetições ou sobreposições por cliente e título. A definição de dias calculados é `data de referência − vencimento`, com valores negativos para vencimentos futuros.
@@ -55,7 +75,7 @@ Uma sobreposição entre A Vencer e Recebido pode representar pagamento parcial.
 
 A planilha é lida em um Web Worker no próprio navegador. Não há upload, telemetria, fontes remotas, API de dados ou envio dos registros para a Vercel. A configuração de hospedagem inclui política de conteúdo que restringe conexões à origem do site.
 
-Por padrão, os dados ficam somente na memória da aba e desaparecem ao recarregar/fechar. A opção **Lembrar a nova base neste navegador** usa IndexedDB no mesmo dispositivo. Justificativas seguem a mesma opção de persistência. Não há sincronização ou backup: limpar os dados do site remove a base. Outros usuários do mesmo perfil do navegador podem acessá-la; use dispositivo confiável. **Remover base deste navegador** apaga a base ativa local. Uma falha ao salvar não confirma a substituição; a interface mostra a mensagem e mantém a base anterior.
+Por padrão, os dados ficam somente na memória da aba e desaparecem ao recarregar/fechar. A opção **Lembrar a nova base neste navegador** usa IndexedDB no mesmo dispositivo. Justificativas seguem a mesma opção de persistência. Não há sincronização ou backup: limpar os dados do site remove a base. Outros usuários do mesmo perfil do navegador podem acessá-la; use dispositivo confiável. **Desativar base atual (preservar histórico)** retira a posição de utilização e mantém as versões anteriores. Versões em memória duram a sessão; versões previamente salvas continuam no histórico local. Limpar os dados do site no navegador remove o armazenamento. Uma falha ao salvar não confirma a substituição; a interface mostra a mensagem e mantém a base anterior.
 
 Não incluir planilhas, registros, credenciais, screenshots com dados reais ou bancos locais no Git. A planilha oficial foi usada externamente nos testes e não faz parte do repositório. Os valores históricos nos testes são referências de conciliação; nenhum desses valores alimenta componentes ou indicadores da aplicação.
 
@@ -105,9 +125,12 @@ Sem essa variável, os testes com o arquivo oficial são marcados como ignorados
 
 - `src/importacao`: leitura Excel em worker, cache OOXML de fórmulas, sugestão de mapeamento e normalização.
 - `src/domain`: contratos, datas, precisão monetária, filtros e agregações.
+- `src/credito`: análise por cliente, critérios propostos, gráficos, detalhamento e histórico de propostas.
 - `src/auditoria`: regras de conferência independentes da interface.
 - `src/persistencia`: contrato de repositório e implementação IndexedDB, substituível futuramente por integração autorizada.
 - `src/components`: gerenciamento, gráficos, rankings, auditoria e detalhamento.
 - `tests`: testes de serviços e fluxos completos em navegador.
+
+A comparação independente de crédito pode ser repetida com `python scripts/validate_credit_reference.py /caminho/privado/base.xlsx` (Python e openpyxl são necessários apenas para esse teste de desenvolvimento). O relatório detalhado usa hashes dos nomes e não deve ser publicado com dados privados.
 
 A integração ao Neon, a administração autenticada e a publicação de bases para visitantes pertencem às etapas seguintes e exigem autorização própria. Esta aplicação não oferece segurança de acesso baseada em controles do frontend.

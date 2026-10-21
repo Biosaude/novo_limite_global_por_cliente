@@ -106,6 +106,9 @@ export function normalize(
         due: dateValue(get("due"), source.date1904),
         received,
         reportedDays,
+        issued: dateValue(get("issued"), source.date1904),
+        document: String(get("document") ?? "").trim(),
+        installment: String(get("installment") ?? "").trim(),
       });
       // Células com fórmula usam somente resultado armazenado; nunca avaliam expressões.
       if (

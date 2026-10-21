@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Users,
   Wallet,
+  BadgeDollarSign,
   X,
 } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
@@ -34,19 +35,32 @@ import {
 } from "./domain/finance";
 import { displayDate, cutoff } from "./domain/dates";
 import { money, percentage } from "./domain/money";
+import { BaseHistory } from "./components/BaseHistory";
 import { localRepository } from "./persistencia/repository";
+const CreditModule = lazy(() =>
+  import("./credito/CreditModule").then((module) => ({
+    default: module.CreditModule,
+  })),
+);
 const FinancialCharts = lazy(() =>
   import("./components/FinancialCharts").then((module) => ({
     default: module.FinancialCharts,
   })),
 );
-type View = "dashboard" | "clientes" | "representantes" | "auditoria" | "base";
+type View =
+  | "dashboard"
+  | "clientes"
+  | "representantes"
+  | "auditoria"
+  | "base"
+  | "credito";
 const navigation: { id: View; label: string; icon: typeof Activity }[] = [
   { id: "dashboard", label: "Visão geral", icon: LayoutDashboard },
   { id: "clientes", label: "Clientes", icon: Users },
   { id: "representantes", label: "Representantes", icon: Activity },
   { id: "auditoria", label: "Auditoria", icon: ShieldCheck },
   { id: "base", label: "Gerenciar Base", icon: Database },
+  { id: "credito", label: "Análise de Crédito", icon: BadgeDollarSign },
 ];
 const emptyFilters: Filters = {
   year: "",
@@ -63,6 +77,8 @@ export default function App() {
     [loading, setLoading] = useState(true),
     [storageError, setStorageError] = useState("");
   const [filters, setFilters] = useState<Filters>(emptyFilters);
+  const [versions, setVersions] = useState<Dataset[]>([]);
+  const [durableIds, setDurableIds] = useState<string[]>([]);
   const [detail, setDetail] = useState<{
     title: string;
     records: FinancialRecord[];
@@ -71,7 +87,12 @@ export default function App() {
     let alive = true;
     localRepository
       .load()
-      .then((dataset) => {
+      .then(async (dataset) => {
+        const savedVersions = await localRepository.history();
+        if (alive) {
+          setVersions(savedVersions);
+          setDurableIds(savedVersions.map((version) => version.id));
+        }
         if (alive && dataset) {
           setActive(dataset);
           setRemembered(true);
@@ -96,14 +117,41 @@ export default function App() {
     const dataset = { ...candidate, updatedAt: new Date().toISOString() };
     if (remember) await localRepository.save(dataset);
     else if (remembered) await localRepository.clear();
+    setVersions((current) => {
+      const map = new Map(current.map((version) => [version.id, version]));
+      if (active) map.set(active.id, active);
+      map.set(dataset.id, dataset);
+      return [...map.values()];
+    });
+    if (remember)
+      setDurableIds((current) => [...new Set([...current, dataset.id])]);
     setActive(dataset);
     setRemembered(remember);
     setFilters(initialFilters(dataset));
     setStorageError("");
     setDetail(null);
   }
+  async function restore(dataset: Dataset) {
+    const durable = durableIds.includes(dataset.id);
+    if (durable) await localRepository.save(dataset);
+    else if (remembered) await localRepository.clear();
+    if (active)
+      setVersions((current) => [
+        ...current.filter((version) => version.id !== active.id),
+        active,
+      ]);
+    setActive(dataset);
+    setRemembered(durable);
+    setFilters(initialFilters(dataset));
+    setDetail(null);
+  }
   async function forget() {
-    await localRepository.clear();
+    if (remembered) await localRepository.clear();
+    if (active)
+      setVersions((current) => [
+        ...current.filter((version) => version.id !== active.id),
+        active,
+      ]);
     setActive(null);
     setRemembered(false);
     setFilters(emptyFilters);
@@ -326,12 +374,19 @@ export default function App() {
           {loading ? (
             <p role="status">Carregando armazenamento local…</p>
           ) : view === "base" ? (
-            <ImportManager
-              active={active}
-              remembered={remembered}
-              onCommit={commit}
-              onForget={forget}
-            />
+            <>
+              <ImportManager
+                active={active}
+                remembered={remembered}
+                onCommit={commit}
+                onForget={forget}
+              />
+              <BaseHistory
+                versions={versions}
+                activeId={active?.id}
+                onRestore={restore}
+              />
+            </>
           ) : (
             <>
               <section className="filters" aria-label="Filtros financeiros">
@@ -471,6 +526,17 @@ export default function App() {
                   </span>
                 </div>
               </section>
+              {view === "credito" && (
+                <Suspense
+                  fallback={<p role="status">Carregando análise de crédito…</p>}
+                >
+                  <CreditModule
+                    dataset={active}
+                    filters={filters}
+                    onTrace={(title, records) => setDetail({ title, records })}
+                  />
+                </Suspense>
+              )}
               {view === "dashboard" && (
                 <>
                   <section
@@ -574,7 +640,7 @@ export default function App() {
                   </Suspense>
                 </>
               )}
-              {view === "auditoria" ? (
+              {view === "credito" ? null : view === "auditoria" ? (
                 <section className="panel">
                   <div className="panel-title">
                     <div>

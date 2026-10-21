@@ -256,7 +256,9 @@ export function ImportManager({
               setBusy(true);
               try {
                 await onForget();
-                setSuccess("Base removida da sessão e do armazenamento local.");
+                setSuccess(
+                  "Base ativa removida. Versões anteriores permanecem no histórico local ou desta sessão.",
+                );
               } catch (e) {
                 setError(
                   e instanceof Error ? e.message : "Falha ao remover a base.",
@@ -266,7 +268,7 @@ export function ImportManager({
               }
             }}
           >
-            Remover base deste navegador
+            Desativar base atual (preservar histórico)
           </button>
         </div>
       )}
