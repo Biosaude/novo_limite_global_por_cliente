@@ -18,7 +18,7 @@ O sistema aceita `.xlsx` sem senha, até 20 MB, até 100.000 linhas de dados e 2
 
 ## Interface e modelo Excel
 
-O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). As seções de navegação, incluindo Análise de Crédito, ficam no topo; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os quatro KPIs usam a largura do painel, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
+O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). As seções de navegação, incluindo Análise de Crédito, ficam no topo; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os quatro KPIs financeiros usam a largura do painel, o aging médio ponderado fica logo abaixo, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
 
 O rótulo **Vencidos (inadimplência)** é compartilhado entre cards, filtros, rankings, detalhamento, prévia da importação e legendas. Os nomes originais das abas, colunas e arquivos Excel são preservados para rastreabilidade e compatibilidade com a planilha oficial. As faixas de inadimplência usam a mesma regra já existente: 1–30, 31–60, 61–90, 91–180 e acima de 180 dias; valores em faixas de diagnóstico também são preservados.
 
@@ -37,7 +37,11 @@ As capturas abaixo usam exclusivamente **ARQUIVO_DE_TESTE_VISUAL.xlsx**, gerado 
 - **A Vencer:** soma de `Vr.aberto` na categoria A Vencer.
 - **Vencidos (inadimplência):** soma de `Vr.aberto` na categoria de inadimplência, preservando a classificação original do Excel.
 - **Recebido YTD:** soma de `Vr.recebido` com `Dt.recebimento` entre 1º de janeiro do ano escolhido e o menor valor entre o fim do mês selecionado e a data de referência.
-- **Limite Global:** soma dos três componentes acima. Não é um crédito contratual concedido.
+- **Exposição Financeira Total:** A Vencer + Vencidos (inadimplência), exclusivamente saldos em aberto. Recebido YTD não compõe a dívida.
+- **Aging Médio dos Vencidos:** Σ(saldo vencido × dias de atraso na posição) / Σ saldo vencido. Média ponderada pelos registros filtrados; sem saldo, “Não aplicável”.
+- **Movimentação gerencial:** soma de A Vencer + Vencidos + Recebido YTD, preservada nos gráficos e rankings, com rótulo explícito. Não é exposição, vendas totais ou crédito aprovado.
+
+As fórmulas permanecem visíveis nos rodapés dos quatro KPIs financeiros, do aging e dos cards de faixa. As cinco faixas possuem barras horizontais de participação no saldo vencido, e a concentração acima de 180 dias aparece em painel próprio, sem bloqueio automático. Consulte [metodologia, conciliação antes/depois e capturas](docs/VALIDACAO_AGING.md).
 
 Valores são convertidos com Decimal.js para centavos inteiros, somados dentro da faixa segura de inteiros e formatados em reais somente na interface. Valores inválidos, com precisão superior a centavos ou com overflow são bloqueantes. Valores negativos são preservados e advertidos. Datas civis e diferenças de dias usam UTC para evitar variações de fuso horário.
 

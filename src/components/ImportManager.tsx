@@ -525,12 +525,12 @@ export function ImportManager({
           </p>
           {preview && (
             <div className="preview-totals">
-              {(["upcoming", "overdue", "received", "global"] as const).map(
+              {(["upcoming", "overdue", "received", "exposure"] as const).map(
                 (key) => (
                   <div key={key}>
                     <span>
-                      {key === "global"
-                        ? "Limite Global"
+                      {key === "exposure"
+                        ? "Exposição Financeira Total"
                         : key === "received"
                           ? "Recebido YTD"
                           : categoryLabel[key]}

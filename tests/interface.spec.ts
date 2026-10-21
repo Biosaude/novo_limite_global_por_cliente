@@ -12,7 +12,7 @@ async function stage(
 ) {
   await manage(page);
   await page.getByLabel("Selecionar planilha Excel").setInputFiles({
-    name: "teste.xlsx",
+    name: "ARQUIVO_DE_TESTE.xlsx",
     mimeType:
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     buffer: await fixture(variant),
@@ -43,7 +43,7 @@ async function importFixture(page: Page, remember = false) {
   await page.getByRole("button", { name: "Voltar ao dashboard" }).click();
 }
 
-test("interface vazia: quatro cards, seis gráficos, filtros indisponíveis e responsividade", async ({
+test("interface vazia: cinco cards, seis gráficos, filtros indisponíveis e responsividade", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -52,12 +52,13 @@ test("interface vazia: quatro cards, seis gráficos, filtros indisponíveis e re
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Dashboard Limite Global por Cliente · Biosaúde",
   );
-  await expect(page.locator(".kpi")).toHaveCount(4);
+  await expect(page.locator(".kpi")).toHaveCount(5);
   await expect(page.locator(".kpi-value")).toHaveText([
     "—BRL",
     "—BRL",
     "—BRL",
     "—BRL",
+    "—",
   ]);
   await expect(page.locator(".chart-panel")).toHaveCount(6);
   for (const select of await page.getByRole("combobox").all())
@@ -92,7 +93,7 @@ test("importação calcula valores efetivos, gráficos e rankings; filtros respe
   });
   await page.goto("/");
   await importFixture(page);
-  await expect(page.locator(".kpi-value").first()).toHaveText(/201,00/);
+  await expect(page.locator(".kpi-value").first()).toHaveText(/150,30/);
   await expect(page.locator(".chart-panel svg.recharts-surface")).toHaveCount(
     6,
   );
@@ -107,12 +108,12 @@ test("importação calcula valores efetivos, gráficos e rankings; filtros respe
   await page
     .getByLabel("Cliente", { exact: true })
     .selectOption("Cliente Teste B");
-  await expect(page.locator(".kpi.global .kpi-value")).toHaveText(/30,30/);
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/0,00/);
   await page.getByRole("button", { name: "Limpar filtros" }).click();
   await page
     .getByLabel("Categoria financeira", { exact: true })
     .selectOption("overdue");
-  await expect(page.locator(".kpi.global .kpi-value")).toHaveText(/50,20/);
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/50,20/);
   await page.getByRole("button", { name: "Limpar filtros" }).click();
   await page
     .getByRole("navigation")
@@ -161,7 +162,7 @@ test("detalhamento, originais, auditoria e justificativa local funcionam e persi
     page.getByText("Conferência local de recebimento parcial."),
   ).toBeVisible();
   await page.reload();
-  await expect(page.locator(".kpi.global .kpi-value")).toHaveText(/201,00/);
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/150,30/);
   await page
     .getByRole("navigation")
     .getByRole("button", { name: "Auditoria", exact: true })
@@ -200,7 +201,7 @@ test("substituição inválida preserva a base; confirmação válida troca os v
     page.getByRole("checkbox", { name: /Confirmar substituição da base/ }),
   ).toBeDisabled();
   await page.getByRole("button", { name: "Voltar ao dashboard" }).click();
-  await expect(page.locator(".kpi.global .kpi-value")).toHaveText(/201,00/);
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/150,30/);
   await stage(page, "replacement");
   await expect(
     page.getByRole("checkbox", { name: /Confirmar substituição da base/ }),
@@ -215,7 +216,7 @@ test("substituição inválida preserva a base; confirmação válida troca os v
     page.getByText(/Dashboard atualizado com sucesso:/),
   ).toBeVisible();
   await page.getByRole("button", { name: "Voltar ao dashboard" }).click();
-  await expect(page.locator(".kpi.global .kpi-value")).toHaveText(/143,40/);
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/92,70/);
   await page.reload();
   await expect(page.locator(".status")).toHaveText("Sem base importada");
 });
@@ -251,7 +252,7 @@ test("planilha oficial no navegador: importação, totais reais, advertências e
   await expect(page.locator(".validation-panel")).toContainText(
     "5.099 registros preservados · 2.354 advertências · 0 erros bloqueantes",
   );
-  await expect(page.locator(".preview-totals")).toContainText("93.286.081,75");
+  await expect(page.locator(".preview-totals")).toContainText("36.286.262,45");
   await page
     .getByRole("checkbox", { name: /Confirmar utilização da base/ })
     .check();
@@ -262,8 +263,8 @@ test("planilha oficial no navegador: importação, totais reais, advertências e
     page.getByText(/Dashboard atualizado com sucesso:/),
   ).toBeVisible();
   await page.getByRole("button", { name: "Voltar ao dashboard" }).click();
-  await expect(page.locator(".kpi.global .kpi-value")).toHaveText(
-    /93\.286\.081,75/,
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(
+    /36\.286\.262,45/,
   );
   await expect(page.locator(".kpi.upcoming .kpi-value")).toHaveText(
     /25\.711\.247,24/,
@@ -277,6 +278,14 @@ test("planilha oficial no navegador: importação, totais reais, advertências e
   await expect(page.locator(".chart-panel svg.recharts-surface")).toHaveCount(
     6,
   );
+  await expect(page.locator(".aging-average .kpi-value")).toHaveText("423,74 dias");
+  await expect(page.locator(".kpi.upcoming .kpi-footer")).toContainText("70,86%");
+  await expect(page.locator(".kpi.overdue .kpi-footer")).toContainText("29,14%");
+  await expect(page.locator(".kpi.received .kpi-footer")).not.toContainText("%");
+  await expect(page.locator(".critical-concentration > strong")).toHaveText("67,51%");
+  await expect(page.locator(".aging-share-row")).toHaveCount(5);
+  for (const amount of ["834.646,90", "292.886,43", "525.062,51", "1.783.670,50", "7.138.748,87"])
+    await expect(page.locator(".aging-cards")).toContainText(amount);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -367,7 +376,7 @@ test("modelo baixável: download real, planilha vazia compatível e controles al
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     buffer: await fixture(),
   });
-  await expect(page.locator(".preview-totals")).toContainText("201,00");
+  await expect(page.locator(".preview-totals")).toContainText("150,30");
   await expect(
     page.getByRole("button", { name: "Atualizar Dashboard", exact: true }),
   ).toBeDisabled();
@@ -385,7 +394,7 @@ test("aplicar base exige confirmação e registra horário da aplicação; perí
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     buffer: await fixture(),
   });
-  await expect(page.locator(".preview-totals")).toContainText("201,00");
+  await expect(page.locator(".preview-totals")).toContainText("150,30");
   const apply = page.getByRole("button", {
     name: "Atualizar Dashboard",
     exact: true,
@@ -418,7 +427,7 @@ test("aplicar base exige confirmação e registra horário da aplicação; perí
   await expect(page.locator(".update-metadata")).toContainText("6 registros");
   await expect(page.locator(".status")).toHaveText("Atualizada");
   await page.getByRole("button", { name: "Voltar ao dashboard" }).click();
-  await expect(page.locator(".kpi.global .kpi-value")).toHaveText(/201,00/);
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/150,30/);
   await page
     .getByRole("combobox", { name: "Ano", exact: true })
     .selectOption("2025");
@@ -444,7 +453,7 @@ test("painel sem menu lateral: categoria de inadimplência consistente e gráfic
 }) => {
   await page.goto("/");
   await importFixture(page);
-  await expect(page.getByRole("complementary")).toHaveCount(0);
+  await expect(page.locator(".sidebar")).toHaveCount(0);
   const nav = page.getByRole("navigation", { name: "Navegação principal" });
   await expect(nav.getByRole("button")).toHaveCount(6);
   for (const button of await nav.getByRole("button").all())
@@ -493,7 +502,7 @@ test("painel sem menu lateral: categoria de inadimplência consistente e gráfic
   await page
     .getByRole("combobox", { name: "Categoria financeira" })
     .selectOption("overdue");
-  await expect(page.locator(".kpi.global .kpi-value")).toHaveText(/50,20/);
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/50,20/);
   await expect(page.locator(".kpi.overdue .kpi-value")).toHaveText(/50,20/);
   await expect(page.getByText(/^Vencidos?$/i)).toHaveCount(0);
   expect(
@@ -508,4 +517,55 @@ test("painel sem menu lateral: categoria de inadimplência consistente e gráfic
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+
+test("fórmulas permanentes, aging ponderado e percentuais respeitam seleção e layout", async ({page}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.goto("/");
+  await importFixture(page);
+  await expect(page.locator(".financial-kpis .kpi")).toHaveCount(4);
+  await expect(page.locator(".financial-kpis .kpi-label")).toHaveText([
+    "Exposição Financeira Total", "A Vencer", "Vencidos (inadimplência)", "Recebido YTD",
+  ]);
+  await expect(page.locator(".financial-kpis .kpi-value")).toHaveText([/150,30/, /100,10/, /50,20/, /50,70/]);
+  await expect(page.locator(".aging-average .kpi-value")).toHaveText("10 dias");
+  await expect(page.locator(".kpi.upcoming .kpi-footer")).toContainText("66,6%");
+  await expect(page.locator(".kpi.overdue .kpi-footer")).toContainText("33,4%");
+  await expect(page.locator(".kpi.received .kpi-footer")).not.toContainText("%");
+  for (const formula of await page.locator(".financial-kpis .kpi-formula, .aging-average .kpi-formula, .aging-card .kpi-formula").all()) {
+    await expect(formula).toBeVisible();
+    await expect(formula).toContainText("Cálculo:");
+    expect(await formula.evaluate(e => e.scrollWidth <= e.clientWidth && e.scrollHeight <= e.clientHeight)).toBe(true);
+  }
+  const card = (await page.locator(".aging-average").boundingBox())!;
+  const distribution = (await page.locator(".aging-distribution").boundingBox())!;
+  const first = (await page.locator(".financial-kpis").boundingBox())!;
+  expect(card.y).toBeGreaterThan(first.y + first.height);
+  expect(distribution.y).toBeGreaterThan(card.y + card.height);
+  await expect(page.locator(".aging-share-row")).toHaveCount(5);
+  await expect(page.locator(".aging-share-row").first()).toContainText("100%");
+  await expect(page.locator(".critical-concentration > strong")).toHaveText("0%");
+  if (process.env.BIOSAUDE_CAPTURE_AGING && ['desktop','mobile'].includes(testInfo.project.name)) {
+    await page.screenshot({path: `docs/preview-aging-${testInfo.project.name}.png`,fullPage:true});
+  }
+  await page.getByLabel("Mês de referência", {exact:true}).selectOption("09");
+  await expect(page.locator(".aging-average .kpi-value")).toHaveText("10 dias");
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/150,30/);
+  await expect(page.locator(".kpi.received .kpi-value")).toHaveText(/30,30/);
+  await expect(page.locator(".filter-help")).toContainText("não reconstrói saldos históricos");
+  await page.getByLabel("Cliente", {exact:true}).selectOption("Cliente Teste B");
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/0,00/);
+  await expect(page.locator(".aging-average .kpi-value")).toHaveText("Não aplicável");
+  await expect(page.locator(".kpi.overdue .kpi-footer")).toContainText("Não aplicável");
+  await expect(page.locator(".critical-concentration > strong")).toHaveText("Não aplicável");
+  await page.getByRole("button", {name:"Limpar filtros"}).click();
+  await page.getByLabel("Representante", {exact:true}).selectOption("Representante Teste");
+  await expect(page.locator(".aging-average .kpi-value")).toHaveText("10 dias");
+  await page.getByLabel("Categoria financeira", {exact:true}).selectOption("received");
+  await expect(page.locator(".aging-average .kpi-value")).toHaveText("Não aplicável");
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/0,00/);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
 });

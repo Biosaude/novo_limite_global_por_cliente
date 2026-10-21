@@ -1,9 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   Activity,
-  ArrowDownLeft,
-  ArrowUpRight,
-  CalendarDays,
   Check,
   Database,
   FileSpreadsheet,
@@ -11,10 +8,10 @@ import {
   ListFilter,
   ShieldCheck,
   Users,
-  Wallet,
   BadgeDollarSign,
   X,
 } from "lucide-react";
+import { FinancialKpis } from "./components/FinancialKpis";
 import { EmptyState } from "./components/EmptyState";
 import { ImportManager } from "./components/ImportManager";
 import { AuditTable } from "./components/AuditTable";
@@ -34,7 +31,6 @@ import {
   totals,
 } from "./domain/finance";
 import { displayDate, cutoff } from "./domain/dates";
-import { money, percentage } from "./domain/money";
 import { BaseHistory } from "./components/BaseHistory";
 import { localRepository } from "./persistencia/repository";
 const CreditModule = lazy(() =>
@@ -539,89 +535,8 @@ export default function App() {
               )}
               {view === "dashboard" && (
                 <>
-                  <section
-                    className="kpi-grid"
-                    aria-label="Indicadores financeiros"
-                  >
-                    {[
-                      {
-                        key: "global",
-                        title: "Limite Global",
-                        description: `A Vencer + ${categoryLabel.overdue} + Recebido YTD`,
-                        icon: Wallet,
-                        className: "global",
-                      },
-                      {
-                        key: "upcoming",
-                        title: "A Vencer",
-                        description: "Saldos em aberto a vencer",
-                        icon: CalendarDays,
-                        className: "upcoming",
-                      },
-                      {
-                        key: "overdue",
-                        title: categoryLabel.overdue,
-                        description: "Saldos em aberto em atraso",
-                        icon: ArrowUpRight,
-                        className: "overdue",
-                      },
-                      {
-                        key: "received",
-                        title: "Recebido YTD",
-                        description: "Recebimentos acumulados no ano",
-                        icon: ArrowDownLeft,
-                        className: "received",
-                      },
-                    ].map(
-                      ({ key, title, description, icon: Icon, className }) => (
-                        <article className={`kpi ${className}`} key={key}>
-                          <div className="kpi-label">
-                            {title}
-                            <span>
-                              <Icon size={19} />
-                            </span>
-                          </div>
-                          <div
-                            className="kpi-value"
-                            aria-label={`${title}: ${active ? money(summary[key as keyof Omit<typeof summary, "count">]) : "sem dados"}`}
-                          >
-                            {active ? (
-                              money(
-                                summary[
-                                  key as keyof Omit<typeof summary, "count">
-                                ],
-                              )
-                            ) : (
-                              <>
-                                —<small>BRL</small>
-                              </>
-                            )}
-                          </div>
-                          <p>{description}</p>
-                          <div className="kpi-footer">
-                            <span className="tiny-dot" />
-                            {active
-                              ? `${summary.count.toLocaleString("pt-BR")} registros na seleção`
-                              : "Aguardando base"}
-                            <span>
-                              {active
-                                ? percentage(
-                                    summary[
-                                      key as keyof Omit<typeof summary, "count">
-                                    ],
-                                    summary.global,
-                                  )
-                                : "—"}
-                            </span>
-                          </div>
-                        </article>
-                      ),
-                    )}
-                  </section>
-                  <p className="definition">
-                    Limite Global é um indicador financeiro e não representa
-                    crédito contratual concedido ao cliente.
-                  </p>
+                  <FinancialKpis records={records} summary={summary}
+                    reference={active?.reference ?? ""} loaded={!!active} />
                   <InadimplenciaDistribution
                     records={records}
                     reference={active?.reference ?? ""}

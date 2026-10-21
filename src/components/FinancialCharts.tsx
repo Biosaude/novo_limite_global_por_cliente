@@ -26,7 +26,7 @@ function Bars({
   data,
   horizontal = false,
   denominator,
-  label = "Limite Global",
+  label = "Movimentação gerencial",
   color = colors[2],
   categoryColors = false,
 }: {
@@ -147,8 +147,8 @@ export function FinancialCharts({
   const months = monthly(records);
   const specs = [
     {
-      title: "Composição do Limite Global",
-      subtitle: "Participação de cada categoria financeira",
+      title: "Composição da movimentação gerencial",
+      subtitle: "Saldos da posição + Recebido YTD; não representa dívida ou vendas totais",
       content: categories.some((item) => item.value < 0) ? (
         <p className="chart-explanation">
           A base contém valores negativos. Consulte o comparativo: um gráfico de
@@ -190,7 +190,7 @@ export function FinancialCharts({
     },
     {
       title: "Comparativo financeiro",
-      subtitle: `A Vencer, ${categoryLabel.overdue} e Recebido YTD`,
+      subtitle: "Saldos da posição + Recebido YTD; percentuais sobre essa soma, não sobre a exposição",
       content: (
         <Bars
           data={categories}
@@ -202,12 +202,12 @@ export function FinancialCharts({
     },
     {
       title: "Principais clientes",
-      subtitle: "Top 8 por Limite Global · ranking completo abaixo",
+      subtitle: "Top 8 por movimentação gerencial · ranking completo abaixo",
       content: <Bars data={clients} horizontal denominator={summary.global} />,
     },
     {
       title: "Distribuição por representante",
-      subtitle: "Top 8 por Limite Global · tabela completa em Representantes",
+      subtitle: "Top 8 por movimentação gerencial · tabela completa em Representantes",
       content: reps.some((item) => item.name !== "Sem representante") ? (
         <Bars
           data={reps}

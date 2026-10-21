@@ -2256,3 +2256,39 @@ main {
   padding: 0;
   flex-shrink: 0;
 }
+
+/* Fórmulas permanentes: flex mantém o rodapé alinhado sem truncar as legendas. */
+.financial-kpis .kpi, .aging-average { display: flex; flex-direction: column; }
+.kpi-formula { color: #526681; font-size: 11px; line-height: 1.65; overflow-wrap: anywhere; margin: 12px 0; }
+.kpi-formula > span { display: block; margin-top: 6px; }
+.financial-kpis .kpi-footer { margin-top: auto; flex-wrap: wrap; gap: 6px 10px; }
+.financial-kpis .kpi-footer > span:last-child { margin-left: 0; }
+.aging-kpi-row { display: grid; grid-template-columns: minmax(0, 540px); margin: 18px 0 22px; }
+.aging-average .kpi-value { white-space: normal; }
+.aging-average .kpi-label { color: var(--navy); }
+.aging-average .kpi-footer { flex-wrap: wrap; gap: 8px; }
+.aging-average p.aging-data-warning { color: #923a24; font-size: 12px; margin-top: 12px; }
+.aging-share-panel { margin-top: 16px; }
+.aging-share-panel h3, .critical-concentration h3 { font-size: 14px; margin: 0 0 8px; }
+.aging-share-row { display: grid; grid-template-columns: 145px minmax(40px, 1fr) 75px 155px; align-items: center; gap: 14px; margin-top: 15px; font-size: 12px; }
+.aging-share-row > strong, .aging-share-row > span:last-child { text-align: right; }
+.aging-share-track { background: #edf0f5; height: 10px; overflow: hidden; border-radius: 3px; }
+.aging-share-fill { height: 100%; background: #cbd5e4; }
+.aging-fill-2 { background: #97a7bf; }
+.aging-fill-3 { background: #667994; }
+.aging-fill-4 { background: #df7e87; }
+.aging-fill-5 { background: var(--accent); }
+.critical-concentration { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px 20px; background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; margin-top: 16px; }
+.critical-concentration p { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.6; }
+.critical-concentration > strong { font-size: 26px; color: var(--accent); white-space: nowrap; }
+.critical-concentration .kpi-formula { margin-bottom: 0; }
+@media (max-width: 650px) {
+  .aging-share-row { grid-template-columns: minmax(0, 1fr) 70px; gap: 8px; }
+  .aging-share-track { grid-column: 1 / -1; grid-row: 2; }
+  .aging-share-row > strong { grid-column: 2; grid-row: 1; }
+  .aging-share-row > span:last-child { grid-column: 1 / -1; font-size: 11px; }
+  .critical-concentration { align-items: flex-start; flex-direction: column; }
+  .financial-kpis .kpi-formula { font-size: 11px; }
+}
+.aging-average { border-left-color: var(--accent); }
+.aging-average .kpi-label > span { color: var(--accent); background: var(--accent-soft); }
