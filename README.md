@@ -18,7 +18,7 @@ O sistema aceita `.xlsx` sem senha, até 20 MB, até 100.000 linhas de dados e 2
 
 ## Interface e modelo Excel
 
-O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). Os cinco módulos ficam no topo na ordem Visão geral, Análise de Recebimentos, Análise de Crédito, Auditoria e Gerenciar Base; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os cinco KPIs, incluindo o aging médio ponderado, ocupam uma linha a partir de 1.400 px, com adaptação para três, duas ou uma coluna em telas menores, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
+O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). Os seis módulos ficam no topo na ordem Visão geral, Análise de Recebimentos, Gestão da Inadimplência, Análise de Crédito, Auditoria e Gerenciar Base; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os cinco KPIs, incluindo o aging médio ponderado, ocupam uma linha a partir de 1.400 px, com adaptação para três, duas ou uma coluna em telas menores, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
 
 O rótulo **Vencidos (inadimplência)** é compartilhado entre cards, filtros, detalhamento, prévia da importação e legendas. Os nomes originais das abas, colunas e arquivos Excel são preservados para rastreabilidade e compatibilidade com a planilha oficial. As faixas de inadimplência usam a mesma regra já existente: 1–30, 31–60, 61–90, 91–180 e acima de 180 dias; valores em faixas de diagnóstico também são preservados.
 
@@ -169,3 +169,11 @@ O novo painel usa os valores efetivamente recebidos e a data real do recebimento
 Ajuizamento é complementar às categorias de prazo. Sem coluna confiável, mostra **Dados indisponíveis**, sem presumir ação judicial por atraso e sem acrescentar o subconjunto novamente ao total. A planilha atual não possui essa informação. Pagamentos parciais não são deduplicados nem tratados como quitação integral.
 
 [Metodologia, resultados reais, testes, arquivos e capturas](docs/ANALISE_RECEBIMENTOS.md).
+
+## Modernização e Gestão da Inadimplência
+
+Inter local, tipografia ampliada, cards executivos, totais nas roscas e remoção individual de filtros foram aplicados preservando os cálculos. A Gestão da Inadimplência acompanha etapas principais, ações com histórico, processos com confirmação documental e relatórios Excel/PDF. A taxa de recuperação fica indisponível sem carteira elegível de abertura conciliada; recebimentos pós-vencimento não são somados ao estoque.
+
+**Os novos tratamentos e processos ficam somente em memória.** Navegar preserva a sessão; recarregar/fechar perde o acompanhamento. Exporte o histórico JSON sob sua guarda e reimporte-o explicitamente na mesma posição financeira. Não há nova persistência automática, autenticação ou conexão ao Neon. Processos importados entram sem vínculo financeiro presumido.
+
+[Metodologia, campos da relação judicial, limitações, validação por fase e capturas](docs/MODERNIZACAO_GESTAO_INADIMPLENCIA.md).

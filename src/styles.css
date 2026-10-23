@@ -2407,3 +2407,17 @@ main { max-width:1800px; padding-left:24px; padding-right:24px; }
 @media(max-width:1399px){.financial-kpis .kpi-value { font-size:28px; }}
 @media(max-width:720px){main{padding-left:16px;padding-right:16px;}.main-title{font-size:26px;}.topbar h1{font-size:18px;}.panel h2,.panel h3{font-size:18px;}.kpi-value,.financial-kpis .kpi-value{font-size:28px;}}
 @media(prefers-reduced-motion:reduce){.kpi,.aging-card{transition:none;}}
+
+/* Gestão operacional em memória; componentes executivos compartilhados. */
+.management-module { display:grid;gap:22px;min-width:0; }.management-module > .panel,.management-module > .filters { margin:0; }
+.management-fields,.management-form { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px; }
+.management-fields label,.management-form label,.management-toolbar label { display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--muted);min-width:0; }
+.management-module input:not([type=checkbox]):not([type=file]),.management-module select { min-width:0;width:100%;min-height:40px;padding:9px 11px;background:#fafbfe;border:1px solid var(--line);border-radius:8px;color:var(--navy);font:inherit; }
+.management-kpis { grid-template-columns:repeat(3,minmax(0,1fr));margin:0; }.management-kpis .kpi { display:flex;flex-direction:column;min-width:0; }.management-kpis .kpi-label { min-height:44px; }.management-kpis .kpi-value { font-size:28px;min-height:40px; }.management-kpis .kpi p { min-height:40px; }
+.management-charts { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px; }.management-charts .panel { margin:0;min-width:0; }.management-module h3 { margin:0 0 12px; }
+.management-form { margin:20px 0; }.management-form button { align-self:end;min-height:40px; }
+.process-links { grid-column:1/-1;background:#f8f9fc;border:1px solid var(--line);border-radius:10px;padding:16px; }.process-title-list { max-height:220px;overflow:auto;display:grid;gap:9px;margin:14px 0; }.process-title-list label,.management-form .process-confirm { flex-direction:row;align-items:flex-start;line-height:1.6; }.process-title-list input,.process-confirm input { margin-top:3px;flex-shrink:0;accent-color:var(--accent); }
+.management-toolbar { display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end; }.management-toolbar input[type=file] { max-width:240px;font-size:11px; }.management-query table { min-width:1600px; }.process-panel table { min-width:1900px; }.import-operations { background:#f8f9fc;border:1px solid var(--line);padding:16px;margin-top:16px;border-radius:10px; }.import-operations > label { display:block;margin:12px 0; }.operational-warning { margin:0; }.management-module .table-scroll th,.management-module .table-scroll td { text-align:left; }
+@media(min-width:1700px){.management-kpis{grid-template-columns:repeat(6,minmax(0,1fr));}.management-kpis .kpi-value{font-size:26px;overflow-wrap:anywhere;}}
+@media(max-width:1100px){.management-fields,.management-form{grid-template-columns:repeat(2,minmax(0,1fr));}.management-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}.management-charts{grid-template-columns:minmax(0,1fr);}}
+@media(max-width:560px){.management-fields,.management-form,.management-kpis{grid-template-columns:minmax(0,1fr);}.management-toolbar{align-items:stretch;flex-direction:column;}.management-query .panel-title{align-items:flex-start;flex-direction:column;gap:14px;}}

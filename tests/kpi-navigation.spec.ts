@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import ExcelJS from 'exceljs';
 import { fixture } from './fixtures';
-const menu = ['Visão geral', 'Análise de Recebimentos', 'Análise de Crédito', 'Auditoria', 'Gerenciar Base'];
+const menu = ['Visão geral', 'Análise de Recebimentos', 'Gestão da Inadimplência', 'Análise de Crédito', 'Auditoria', 'Gerenciar Base'];
 async function activate(page: Page, largeValues = false) {
   let buffer = await fixture();
   if (largeValues) {
@@ -21,7 +21,7 @@ async function activate(page: Page, largeValues = false) {
   await expect(page.getByText(/Dashboard atualizado com sucesso: 6 registros/)).toBeVisible();
   await page.getByRole('navigation').getByRole('button',{name:'Visão geral',exact:true}).click();
 }
-test('cinco KPIs em grade uniforme, valores longos legíveis e menu com cinco itens',async({page},testInfo)=>{
+test('cinco KPIs em grade uniforme, valores longos legíveis e menu com seis itens',async({page},testInfo)=>{
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await page.goto('/');await activate(page,true);
   const nav=page.getByRole('navigation',{name:'Navegação principal'});

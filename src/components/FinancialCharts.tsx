@@ -1,5 +1,6 @@
 import {
   ResponsiveContainer,
+  ReferenceDot,
   PieChart,
   Pie,
   Cell,
@@ -127,11 +128,13 @@ export function FinancialCharts({
   summary,
   reference,
   loaded,
+  selectedPeriod = "",
 }: {
   records: FinancialRecord[];
   summary: Totals;
   reference: string;
   loaded: boolean;
+  selectedPeriod?: string;
 }) {
   const categories = (["upcoming", "overdue", "received"] as const).map(
     (key) => ({
@@ -235,7 +238,7 @@ export function FinancialCharts({
     },
     {
       title: "Recebimentos por mês",
-      subtitle: "Somente meses presentes nos recebimentos selecionados",
+      subtitle: `Somente meses presentes nos recebimentos selecionados${selectedPeriod ? ` · referência ${selectedPeriod}` : ""}`,
       content: months.length ? (
         <>
           <ResponsiveContainer width="100%" height={270}>
@@ -259,6 +262,7 @@ export function FinancialCharts({
                 strokeWidth={2}
                 isAnimationActive={false}
               />
+              {months.some(month => month.name === selectedPeriod) && <ReferenceDot x={selectedPeriod} y={months.find(month => month.name === selectedPeriod)!.value} r={5} fill="#c71925" stroke="#fff" strokeWidth={2} />}
             </LineChart>
           </ResponsiveContainer>
           <div className="chart-legend">

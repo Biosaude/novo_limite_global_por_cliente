@@ -37,7 +37,7 @@ O cache OOXML contém 13 resultados zero de fórmulas compartilhadas omitidos pe
 
 ## Escopo dos testes
 
-Resultado da execução com o arquivo oficial: **58 testes de serviços aprovados; 108 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
+Resultado da execução com o arquivo oficial: **68 testes de serviços aprovados; 128 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
 
 Testes de serviços: centavos e formatos monetários, overflow, datas civis, leitura de Excel, campos originais, YTD, filtros, agrupamentos, faixas de atraso, séries mensais, arquivos inválidos, mapeamento reordenado, campos ausentes, cache de fórmulas e conciliação integral da base oficial.
 
@@ -96,3 +96,7 @@ Esses testes demonstram funcionamento no navegador automatizado da máquina de d
 ## Análise de Recebimentos
 
 [Conciliação independente, metodologia, ajuizamento, relatórios e testes do novo painel](docs/ANALISE_RECEBIMENTOS.md).
+
+## Modernização e Gestão da Inadimplência
+
+[Testes separados por fase, saldos preservados, histórico, conciliação judicial e limitações de memória](docs/MODERNIZACAO_GESTAO_INADIMPLENCIA.md).
