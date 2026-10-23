@@ -2323,3 +2323,35 @@ main {
   .financial-kpis { grid-template-columns: minmax(0, 1fr); }
   .financial-kpis .kpi-value { font-size: 27px; }
 }
+
+/* Seleção de cobrança independente dos KPIs gerais. */
+button.aging-card { text-align: left; font: inherit; color: var(--navy); cursor: pointer; }
+button.aging-card:disabled { opacity: 1; cursor: default; }
+button.aging-card:not(:disabled):hover, button.aging-share-row:not(:disabled):hover { background: #fff8f9; }
+button.aging-card.selected, button.aging-share-row.selected { outline: 2px solid var(--accent); outline-offset: -2px; background: #fff8f9; }
+button.aging-card:focus-visible, button.aging-share-row:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.aging-selection { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 14px; align-items: center; }
+.aging-selection > p { flex-basis: 100%; margin: 0; }
+.aging-filter-chip { border: 1px solid #edb7bd; color: #a5121e; background: #fff1f2; border-radius: 5px; padding: 7px 10px; font-size: 12px; }
+button.aging-share-row { width: 100%; padding: 7px 4px; border: 0; border-radius: 5px; background: transparent; color: var(--navy); text-align: left; }
+.collection-panel { margin: 20px 0; }
+.collection-panel > .panel-title { flex-wrap: wrap; gap: 14px; }
+.collection-exports { display: flex; gap: 10px; flex-wrap: wrap; }
+.collection-controls { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr; gap: 14px; margin: 20px 0; }
+.collection-controls label { min-width: 0; }
+.collection-bands { display: flex; flex-wrap: wrap; gap: 12px 20px; border: 1px solid var(--line); border-radius: 6px; padding: 12px; margin: 0 0 18px; }
+.collection-bands legend { font-size: 12px; color: var(--navy); padding: 0 5px; }
+.collection-bands label { display: flex; flex-direction: row; gap: 8px; align-items: center; font-size: 12px; }
+.collection-bands input { width: auto; }
+.collection-summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 14px; margin: 18px 0; }
+.collection-summary > div { border-left: 3px solid #cad4e3; padding: 5px 10px; }
+.collection-summary span { display: block; color: var(--muted); font-size: 11px; margin-bottom: 8px; }
+.collection-summary strong { display: block; color: var(--navy); font-size: 17px; overflow-wrap: anywhere; }
+.collection-table { min-width: 1900px; }
+.collection-table td { max-width: 280px; white-space: normal; overflow-wrap: anywhere; }
+.collection-table small { display: block; color: var(--muted); margin-top: 6px; }
+@media(max-width:1000px){ .collection-controls { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width:560px){ .collection-controls { grid-template-columns: minmax(0,1fr); } .collection-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } .collection-exports { width: 100%; } }
+.collection-controls label { display: flex; flex-direction: column; gap: 7px; font-size: 11px; color: var(--muted); }
+.collection-controls input, .collection-controls select { width: 100%; min-height: 38px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 5px; font: inherit; color: var(--navy); background: #fafbfc; }
+.collection-controls input:focus-visible, .collection-controls select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

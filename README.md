@@ -146,3 +146,11 @@ A integração ao Neon, a administração autenticada e a publicação de bases 
 ## Layout dos KPIs e navegação
 
 [Reorganização visual, valores preservados, testes e capturas](docs/VALIDACAO_LAYOUT_KPIS_MENU.md). Fórmulas, filtros de clientes/representantes, dados e módulos financeiros permanecem preservados.
+
+## Consulta de cobrança e relatórios
+
+Na Visão geral, clique nos cards ou barras de aging para selecionar uma ou várias faixas. Os cinco KPIs continuam seguindo os filtros principais; o resumo e a **Consulta de Títulos e Pendências Financeiras** mostram o contexto de cobrança. Cards, barras, chips e caixas de seleção ficam sincronizados. Limpar filtros restaura ambos os contextos.
+
+A consulta inclui pesquisas por cliente/duplicata, ordenação, paginação e acesso ao registro original. **Exportar Excel** e **Exportar PDF** usam todos os resultados selecionados, sem limitar à página visível. Excel tem quatro abas; PDF é A4 paisagem com paginação. Não incluem dados de pacientes e não enviam a base a serviços externos. Os downloads exigem uma base local ativa e resultados válidos.
+
+[Metodologia, rastreabilidade, privacidade, demonstração e conferência financeira](docs/VALIDACAO_COBRANCA_RELATORIOS.md). Para os testes de PDF, instale também Poppler (`pdftotext` e `pdfinfo`).
