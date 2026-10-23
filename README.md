@@ -18,7 +18,7 @@ O sistema aceita `.xlsx` sem senha, até 20 MB, até 100.000 linhas de dados e 2
 
 ## Interface e modelo Excel
 
-O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). Os quatro módulos ficam no topo na ordem Visão geral, Análise de Crédito, Auditoria e Gerenciar Base; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os cinco KPIs, incluindo o aging médio ponderado, ocupam uma linha a partir de 1.400 px, com adaptação para três, duas ou uma coluna em telas menores, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
+O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). Os cinco módulos ficam no topo na ordem Visão geral, Análise de Recebimentos, Análise de Crédito, Auditoria e Gerenciar Base; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os cinco KPIs, incluindo o aging médio ponderado, ocupam uma linha a partir de 1.400 px, com adaptação para três, duas ou uma coluna em telas menores, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
 
 O rótulo **Vencidos (inadimplência)** é compartilhado entre cards, filtros, detalhamento, prévia da importação e legendas. Os nomes originais das abas, colunas e arquivos Excel são preservados para rastreabilidade e compatibilidade com a planilha oficial. As faixas de inadimplência usam a mesma regra já existente: 1–30, 31–60, 61–90, 91–180 e acima de 180 dias; valores em faixas de diagnóstico também são preservados.
 
@@ -129,6 +129,7 @@ Sem essa variável, os testes com o arquivo oficial são marcados como ignorados
 
 - `src/importacao`: leitura Excel em worker, cache OOXML de fórmulas, sugestão de mapeamento e normalização.
 - `src/domain`: contratos, datas, precisão monetária, filtros e agregações.
+- `src/recebimentos`: classificação, filtros, gráficos e relatórios locais de pagamentos efetivos.
 - `src/credito`: análise por cliente, critérios propostos, gráficos, detalhamento e histórico de propostas.
 - `src/auditoria`: regras de conferência independentes da interface.
 - `src/persistencia`: contrato de repositório e implementação IndexedDB, substituível futuramente por integração autorizada.
@@ -160,3 +161,11 @@ A consulta inclui pesquisas por cliente/duplicata, ordenação, paginação e ac
 Os cinco KPIs exibem título, valor, descrição e rodapé, sem fórmulas visíveis. Os percentuais e a data-base permanecem nos rodapés. A distribuição de vencidos e os seis gráficos precedem a **Consulta de Títulos e Pendências Financeiras**, última seção antes do rodapé. O Ranking de Clientes foi removido somente da interface da Visão Geral; os filtros globais, a análise de crédito e o detalhamento dos títulos permanecem disponíveis.
 
 Evidências: [validação dos ajustes de layout](docs/VALIDACAO_REORGANIZACAO_LAYOUT.md).
+
+## Análise de Recebimentos
+
+O novo painel usa os valores efetivamente recebidos e a data real do recebimento para classificar antecipados, em dia e pós-inadimplência. Inclui filtros próprios por ano/mês/trimestre, cliente, representante, condição e ajuizamento; gráficos mensais, trimestrais e de participação; comparativo por categoria; consulta e relatórios Excel/PDF com todos os resultados selecionados.
+
+Ajuizamento é complementar às categorias de prazo. Sem coluna confiável, mostra **Dados indisponíveis**, sem presumir ação judicial por atraso e sem acrescentar o subconjunto novamente ao total. A planilha atual não possui essa informação. Pagamentos parciais não são deduplicados nem tratados como quitação integral.
+
+[Metodologia, resultados reais, testes, arquivos e capturas](docs/ANALISE_RECEBIMENTOS.md).

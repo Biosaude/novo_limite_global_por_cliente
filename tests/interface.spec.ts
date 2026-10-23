@@ -453,7 +453,7 @@ test("painel sem menu lateral: categoria de inadimplência consistente e gráfic
   await importFixture(page);
   await expect(page.locator(".sidebar")).toHaveCount(0);
   const nav = page.getByRole("navigation", { name: "Navegação principal" });
-  await expect(nav.getByRole("button")).toHaveCount(4);
+  await expect(nav.getByRole("button")).toHaveCount(5);
   for (const button of await nav.getByRole("button").all())
     await expect(button).toBeVisible();
   await expect(page.locator(".kpi.overdue")).toContainText(

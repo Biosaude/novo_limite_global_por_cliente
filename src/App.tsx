@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  ArrowDownLeft,
   Check,
   Database,
   FileSpreadsheet,
@@ -33,6 +34,11 @@ import {
 import { displayDate, cutoff } from "./domain/dates";
 import { BaseHistory } from "./components/BaseHistory";
 import { localRepository } from "./persistencia/repository";
+const ReceiptsModule = lazy(() =>
+  import("./recebimentos/ReceiptsModule").then((module) => ({
+    default: module.ReceiptsModule,
+  })),
+);
 const CreditModule = lazy(() =>
   import("./credito/CreditModule").then((module) => ({
     default: module.CreditModule,
@@ -44,12 +50,14 @@ const FinancialCharts = lazy(() =>
   })),
 );
 type View =
+  | "recebimentos"
   | "dashboard"
   | "auditoria"
   | "base"
   | "credito";
 const navigation: { id: View; label: string; icon: typeof Activity }[] = [
   { id: "dashboard", label: "Visão geral", icon: LayoutDashboard },
+  { id: "recebimentos", label: "Análise de Recebimentos", icon: ArrowDownLeft },
   { id: "credito", label: "Análise de Crédito", icon: BadgeDollarSign },
   { id: "auditoria", label: "Auditoria", icon: ShieldCheck },
   { id: "base", label: "Gerenciar Base", icon: Database },
@@ -251,8 +259,7 @@ export default function App() {
             <div>
               <h1>Dashboard Limite Global por Cliente · Biosaúde</h1>
               <p className="fiscal-subtitle">
-                Dashboard Executivo — FY{" "}
-                {filters.year || new Date().getFullYear()}
+                {view === "recebimentos" ? "Dashboard Executivo — Recebimentos por período" : <>Dashboard Executivo — FY {filters.year || new Date().getFullYear()}</>}
               </p>
             </div>
           </div>
@@ -370,6 +377,23 @@ export default function App() {
                 onRestore={restore}
               />
             </>
+          ) : view === "recebimentos" ? (
+            <Suspense
+              fallback={
+                <p role="status">Carregando análise de recebimentos…</p>
+              }
+            >
+              <ReceiptsModule
+                key={active?.id ?? "empty"}
+                dataset={active}
+                onTrace={(record) =>
+                  setDetail({
+                    title: record.title || "Recebimento",
+                    records: [record],
+                  })
+                }
+              />
+            </Suspense>
           ) : (
             <>
               <section className="filters" aria-label="Filtros financeiros">
