@@ -2343,3 +2343,34 @@ button.aging-share-row { width: 100%; padding: 7px 4px; border: 0; border-radius
 .collection-controls label { display: flex; flex-direction: column; gap: 7px; font-size: 11px; color: var(--muted); }
 .collection-controls input, .collection-controls select { width: 100%; min-height: 38px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 5px; font: inherit; color: var(--navy); background: #fafbfc; }
 .collection-controls input:focus-visible, .collection-controls select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Análise de recebimentos: filtros e indicadores independentes dos saldos de posição. */
+.receipts-module { display: grid; gap: 20px; min-width: 0; }
+.receipt-filter-fields { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; }
+.receipt-filter-fields label, .receipt-query label { display: flex; flex-direction: column; gap: 7px; font-size: 11px; color: var(--muted); min-width: 0; }
+.receipt-filter-fields select, .receipt-query select, .receipt-query input { width: 100%; min-width: 0; min-height: 39px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; color: var(--navy); background: #fafbfe; font: inherit; }
+.receipt-kpis { grid-template-columns: repeat(4,minmax(0,1fr)); margin: 0; }
+.receipt-kpis .kpi { display:flex;flex-direction:column;min-width:0;border-left-color:var(--accent); }
+.receipt-kpis .kpi-label { min-height:44px; }
+.receipt-kpis .kpi-value { font-size:clamp(20px,1.7vw,27px);min-height:38px;letter-spacing:-.6px;overflow-wrap:anywhere; }
+.receipt-kpis .kpi p { min-height:42px; margin-bottom:12px; }
+.receipt-kpis .kpi-footer { margin-top:auto; }
+.receipt-charts { display:grid;grid-template-columns: minmax(0,1.5fr) minmax(0,1fr);gap:20px; }
+.receipt-chart { min-width:0;margin:0;padding:22px; }
+.receipt-chart h3,.receipt-detail h3,.receipt-comparison h3 { margin:0 0 7px; font-size:15px;color:var(--navy); }
+.receipt-chart .helper { min-height:30px; }
+.receipt-legend { display:flex;gap:12px;justify-content:center;flex-wrap:wrap;font-size:11px; }
+.receipt-legend span { display:flex;align-items:center;gap:6px; }
+.receipt-legend i { width:10px;height:10px;display:inline-block; }
+.receipt-legal > strong { display:block;font-size:27px; margin:30px 0 20px;color:var(--navy); }
+.receipt-legal p { color:var(--muted);font-size:12px;line-height:1.8; }
+.receipt-warning { background:#fffbf2;border:1px solid #f0d7a0;padding:12px;border-radius:6px;font-size:12px;line-height:1.7;margin:0; }
+.receipt-actions { display:flex;gap:10px;flex-wrap:wrap; }
+.receipt-query { display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:16px;margin:20px 0; }
+.receipt-table { min-width:1900px; }
+.receipt-table td,.receipt-table th { text-align:left; }
+.receipt-table th { white-space:normal; }
+.receipt-detail,.receipt-comparison { min-width:0;margin:0; }
+@media(max-width:1100px){.receipt-filter-fields{grid-template-columns:repeat(3,minmax(0,1fr));}.receipt-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:750px){.receipt-filter-fields{grid-template-columns:repeat(2,minmax(0,1fr));}.receipt-charts{grid-template-columns:minmax(0,1fr);}.receipt-query{grid-template-columns:minmax(0,1fr);}}
+@media(max-width:560px){.receipt-filter-fields,.receipt-kpis{grid-template-columns:minmax(0,1fr);}.receipt-detail .panel-title{align-items:flex-start;flex-direction:column;gap:12px;}.receipt-legal > strong{font-size:24px;}}
