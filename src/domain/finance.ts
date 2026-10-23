@@ -2,6 +2,7 @@ import type { Dataset, Filters, FinancialRecord, Group, Totals } from "./types";
 import { cutoff, daysBetween } from "./dates";
 import { sum } from "./money";
 import Decimal from "decimal.js";
+import { agingBandIndex, agingBandNames } from "./agingBands";
 const AgingDecimal = Decimal.clone({ precision: 40 });
 export function initialFilters(dataset: Dataset): Filters {
   return {
@@ -69,34 +70,11 @@ export function groupBy(
     );
 }
 export function aging(records: FinancialRecord[], reference: string) {
-  const ranges = [
-    "Sem atraso / divergente",
-    "1–30 dias",
-    "31–60 dias",
-    "61–90 dias",
-    "91–180 dias",
-    "Acima de 180 dias",
-    "Sem vencimento",
-  ];
-  const values = ranges.map((name) => ({ name, value: 0 }));
+  const values = agingBandNames.map((name) => ({ name, value: 0 }));
   for (const record of records.filter(
     (record) => record.category === "overdue",
   )) {
-    const days = record.due ? daysBetween(reference, record.due) : null;
-    const index =
-      days === null
-        ? 6
-        : days <= 0
-          ? 0
-          : days <= 30
-            ? 1
-            : days <= 60
-              ? 2
-              : days <= 90
-                ? 3
-                : days <= 180
-                  ? 4
-                  : 5;
+    const index = agingBandIndex(record, reference);
     values[index].value = sum([values[index].value, record.cents ?? 0]);
   }
   return values;

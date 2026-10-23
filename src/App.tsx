@@ -10,6 +10,9 @@ import {
   BadgeDollarSign,
   X,
 } from "lucide-react";
+import { CollectionPanel } from "./components/CollectionPanel";
+import { initialCollectionQuery, type CollectionQuery } from "./cobranca/query";
+import type { AgingBandIndex } from "./domain/agingBands";
 import { FinancialKpis } from "./components/FinancialKpis";
 import { EmptyState } from "./components/EmptyState";
 import { ImportManager } from "./components/ImportManager";
@@ -67,6 +70,7 @@ export default function App() {
     [remembered, setRemembered] = useState(false),
     [loading, setLoading] = useState(true),
     [storageError, setStorageError] = useState("");
+  const [collectionQuery, setCollectionQuery] = useState<CollectionQuery>(initialCollectionQuery);
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [versions, setVersions] = useState<Dataset[]>([]);
   const [durableIds, setDurableIds] = useState<string[]>([]);
@@ -88,6 +92,7 @@ export default function App() {
           setActive(dataset);
           setRemembered(true);
           setFilters(initialFilters(dataset));
+          setCollectionQuery(initialCollectionQuery);
         }
       })
       .catch((error) => {
@@ -119,6 +124,7 @@ export default function App() {
     setActive(dataset);
     setRemembered(remember);
     setFilters(initialFilters(dataset));
+    setCollectionQuery(initialCollectionQuery);
     setStorageError("");
     setDetail(null);
   }
@@ -134,6 +140,7 @@ export default function App() {
     setActive(dataset);
     setRemembered(durable);
     setFilters(initialFilters(dataset));
+    setCollectionQuery(initialCollectionQuery);
     setDetail(null);
   }
   async function forget() {
@@ -146,6 +153,7 @@ export default function App() {
     setActive(null);
     setRemembered(false);
     setFilters(emptyFilters);
+    setCollectionQuery(initialCollectionQuery);
     setDetail(null);
   }
   async function review(id: string, note: string) {
@@ -218,6 +226,9 @@ export default function App() {
     [active, recordIds],
   );
   const heading = navigation.find((item) => item.id === view)!.label;
+  function toggleBand(band: AgingBandIndex) {
+    setCollectionQuery(current => ({...current, bands: current.bands.includes(band) ? current.bands.filter(value => value !== band) : [...current.bands, band].sort((a,b) => a-b)}));
+  }
   function selectFilter(key: keyof Filters, value: string) {
     setFilters((current) => {
       const next = { ...current, [key]: value };
@@ -390,6 +401,7 @@ export default function App() {
                       className="text-button"
                       onClick={() => {
                         setFilters(initialFilters(active));
+                        setCollectionQuery(initialCollectionQuery);
                         setDetail(null);
                       }}
                     >
@@ -530,7 +542,13 @@ export default function App() {
                     reference={active?.reference ?? ""}
                     loaded={!!active}
                     overdue={summary.overdue}
+                    selectedBands={collectionQuery.bands}
+                    onToggleBand={toggleBand}
+                    onClearBands={() => setCollectionQuery(current => ({...current,bands:[]}))}
                   />
+                  {active && <CollectionPanel dataset={active} records={records} filters={filters}
+                    query={collectionQuery} onQueryChange={setCollectionQuery}
+                    onTrace={record => setDetail({title: record.title || "Título sem identificação", records: [record]})} /> }
                   <Suspense
                     fallback={<p role="status">Carregando gráficos…</p>}
                   >
