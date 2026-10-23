@@ -225,3 +225,30 @@ test('arquivo oficial: cópia com novas fórmulas sem cache elimina alertas de d
   assert.equal(weightedOverdueAging(data.records,data.reference).days,Number(independent.agingDays));
   assert.equal(data.records.filter(r=>r.dayCalculation?.kind==='formula').length,2348);
 });
+
+test('nova planilha real de 23/10/2026: 5.212 registros, 11 fórmulas com +1 auditadas e finanças conciliadas', {skip:!process.env.BIOSAUDE_UPDATED_WORKBOOK}, async () => {
+  const path=process.env.BIOSAUDE_UPDATED_WORKBOOK!;
+  const source=await read(await readFile(path));
+  const data=normalize(source,suggestMappings(source),'2026-10-23','Modelo_Base_Limite_Global_Biosaude.xlsx');
+  const independent=JSON.parse(execFileSync('python',['scripts/validate_aging_reference.py',path,'2026-10-23'],{encoding:'utf8'})).all;
+  assert.equal(data.records.length,5212);
+  assert.deepEqual(source.sheets.map(s=>s.rows.length-1),[1632,793,2787]);
+  assert.equal(data.issues.length,11);
+  assert.ok(data.issues.every(issue=>issue.code==='invalid_days_formula'&&issue.severity==='warning'));
+  assert.deepEqual(data.issues.map(i=>data.records.find(r=>r.id===i.records[0])!.row),Array.from({length:11},(_,i)=>i+2));
+  assert.equal(data.records.filter(r=>r.dayCalculation?.kind==='formula').length,2414);
+  const rows=selectRecords(data,initialFilters(data)),summary=totals(rows);
+  assert.deepEqual(summary,{upcoming:2495083248,overdue:1110573972,exposure:3605657220,received:5790201798,global:9395859018,count:5212});
+  for(const key of ['upcoming','overdue','received','exposure'] as const) assert.equal(summary[key],independent[key]);
+  assert.deepEqual(aging(rows,data.reference).map(b=>b.value),independent.bands);
+  assert.equal(weightedOverdueAging(rows,data.reference).days,Number(independent.agingDays));
+  assert.equal(weightedOverdueAging(rows,data.reference).excludedCount,0);
+  assert.equal(weightedOverdueAging(rows,data.reference).eligibleCount,793);
+  for(const record of data.records.filter(r=>r.category!=='received')) {
+    const original=source.sheets.find(s=>s.name===record.sheet)!.rows.find(row=>row.number===record.row)!;
+    const expression=original.cells[5] as Record<string,RawCell>;
+    assert.ok(expression.formula || expression.sharedFormula);
+    if(record.row<=12 && record.category==='upcoming') assert.equal(record.dayCalculation!.kind,'invalid-formula');
+    assert.equal(record.dayCalculation!.reference,'2026-10-23');
+  }
+});

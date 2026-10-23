@@ -66,3 +66,26 @@ test('cópia da planilha oficial com novas fórmulas: seis advertências legíti
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   expect(errors).toEqual([]);expect(external).toEqual([]);
 });
+
+test('nova planilha enviada: 5.212 registros reais, 11 advertências de +1 e aging de 401,31 dias',async({page})=>{
+  test.skip(!process.env.BIOSAUDE_UPDATED_WORKBOOK,'Nova planilha real externa ao repositório.');
+  const errors:string[]=[],external:string[]=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  page.on('request',request=>{if(!request.url().startsWith('http://127.0.0.1:4173')&&!request.url().startsWith('data:')) external.push(request.url());});
+  await page.goto('/');
+  await stage(page,await readFile(process.env.BIOSAUDE_UPDATED_WORKBOOK!),'2026-10-23');
+  await expect(page.locator('.validation-panel')).toContainText('5.212 registros preservados · 11 advertências · 0 erros bloqueantes');
+  await expect(page.locator('.audit-message').first()).toContainText('Fórmula incompatível');
+  await activate(page,true);
+  await expect(page.locator('.kpi.exposure .kpi-value')).toHaveText(/36\.056\.572,20/);
+  await expect(page.locator('.kpi.upcoming .kpi-value')).toHaveText(/24\.950\.832,48/);
+  await expect(page.locator('.kpi.overdue .kpi-value')).toHaveText(/11\.105\.739,72/);
+  await expect(page.locator('.kpi.received .kpi-value')).toHaveText(/57\.902\.017,98/);
+  await expect(page.locator('.aging-average .kpi-value')).toHaveText('401,31 dias');
+  await page.reload();
+  await expect(page.locator('.aging-average .kpi-value')).toHaveText('401,31 dias');
+  await expect(page.locator('.base-caption')).toContainText('23/10/2026');
+  await page.getByRole('navigation').getByRole('button',{name:'Auditoria',exact:true}).click();
+  await expect(page.locator('.audit-table tbody tr')).toHaveCount(11);
+  expect(errors).toEqual([]);expect(external).toEqual([]);
+});

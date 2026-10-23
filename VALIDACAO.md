@@ -37,7 +37,7 @@ O cache OOXML contém 13 resultados zero de fórmulas compartilhadas omitidos pe
 
 ## Escopo dos testes
 
-Resultado da execução com o arquivo oficial: **41 testes de serviços aprovados; 68 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
+Resultado da execução com o arquivo oficial: **42 testes de serviços aprovados; 72 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
 
 Testes de serviços: centavos e formatos monetários, overflow, datas civis, leitura de Excel, campos originais, YTD, filtros, agrupamentos, faixas de atraso, séries mensais, arquivos inválidos, mapeamento reordenado, campos ausentes, cache de fórmulas e conciliação integral da base oficial.
 
@@ -55,7 +55,7 @@ O teste de **Baixar Modelo da Base** aguarda o evento de download, salva o arqui
 
 O teste do cabeçalho usa um relógio controlado: a base é lida em um horário e aplicada em outro. Confere que a última atualização registra o horário da aplicação em America/Sao_Paulo, além dos registros e do status. O FY responde ao filtro de ano. Nenhum desses horários controlados alimenta o produto.
 
-As capturas em `docs/preview-*.png` usam somente o arquivo sintético `ARQUIVO_DE_TESTE_VISUAL.xlsx`. Não contêm a planilha oficial, pacientes ou dados financeiros reais. A validação da **nova planilha atualizada** continua pendente de seu fornecimento; os resultados reais já conferidos são apenas os da base histórica de 19/10/2026.
+As capturas em `docs/preview-*.png` usam somente o arquivo sintético `ARQUIVO_DE_TESTE_VISUAL.xlsx`. Não contêm a planilha oficial, pacientes ou dados financeiros reais. A nova planilha `Modelo_Base_Limite_Global_Biosaude.xlsx` também foi recebida e validada: 5.212 registros, referência 23/10/2026, 11 advertências legítimas de `+1` nas fórmulas F2:F12 de A Vencer, zero erros bloqueantes. Os totais e o aging novos estão no relatório de fórmulas de vencimento.
 
 ## Painel sem menu lateral e rótulo de inadimplência
 
@@ -79,4 +79,4 @@ Esses testes demonstram funcionamento no navegador automatizado da máquina de d
 
 ## Correção das fórmulas de dias
 
-[Regras antigas/novas, limites da validação do arquivo atualizado, alertas preservados e instruções](docs/VALIDACAO_FORMULAS_VENCIMENTO.md).
+[Regras antigas/novas, conciliação da nova planilha de 23/10/2026, alertas preservados e instruções](docs/VALIDACAO_FORMULAS_VENCIMENTO.md).

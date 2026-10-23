@@ -6,7 +6,7 @@ Dashboard financeiro em React, TypeScript e Vite. A primeira etapa funciona inte
 
 1. Abra o site disponibilizado pelo responsável pelo projeto. Nesta entrega, o código segue em branch para revisão via PR; atualizar a aplicação na Vercel é uma ação separada do responsável.
 2. Acesse **Gerenciar Base**. Use **Baixar Modelo da Base** caso precise da estrutura oficial vazia ou clique em **Selecionar Nova Base** para escolher o arquivo `.xlsx`.
-3. Informe a data da extração. O campo sugere a posição ativa ou a data civil brasileira atual; confirme a referência correta. Para a base histórica fornecida, informe `19/10/2026`. A data fica fixa na posição confirmada.
+3. Informe a data da extração. O campo sugere a posição ativa ou a data civil brasileira atual; confirme a referência correta. Para a nova base fornecida, informe `23/10/2026`; para a extração histórica anterior, `19/10/2026`. A data fica fixa na posição confirmada.
 4. Confira todas as abas, a linha do cabeçalho e as colunas. Para A Vencer e Vencidos (inadimplência), mapeie **saldo em aberto**; para Recebido, **valor efetivamente recebido** e **data de recebimento**. Não use o valor nominal da duplicata.
 5. A prévia é calculada automaticamente quando as abas e colunas são reconhecidas. Confira quantidade de registros, valores e ocorrências. Se ajustar o mapeamento ou a referência, clique em **Validar estrutura e calcular totais** para gerar uma nova prévia.
 6. Marque a confirmação da conferência na prévia e clique em **Atualizar Dashboard**, nos três controles principais. O botão permanece desabilitado sem uma base validada e confirmada. Erros de valores ou de datas essenciais de recebimento bloqueiam a aplicação. Advertências não excluem registros nem bloqueiam o dashboard.
