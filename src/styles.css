@@ -451,9 +451,6 @@ th:first-child {
 td {
   text-align: center;
 }
-.ranking .empty-state {
-  min-height: 170px;
-}
 footer {
   display: flex;
   justify-content: space-between;
@@ -1032,14 +1029,6 @@ td:first-child {
   margin-top: 18px;
   font-size: 10px;
   color: #7e8693;
-}
-.ranking th button {
-  background: none;
-  padding: 0;
-  color: inherit;
-  white-space: nowrap;
-  font-size: inherit;
-  font-weight: inherit;
 }
 .client-link {
   max-width: 270px;
@@ -2287,12 +2276,11 @@ main {
   .aging-share-row > strong { grid-column: 2; grid-row: 1; }
   .aging-share-row > span:last-child { grid-column: 1 / -1; font-size: 11px; }
   .critical-concentration { align-items: flex-start; flex-direction: column; }
-  .financial-kpis .kpi-formula { font-size: 11px; }
 }
 .aging-average { border-left-color: var(--accent); }
 .aging-average .kpi-label > span { color: var(--accent); background: var(--accent-soft); }
 
-/* Os cinco indicadores compartilham a mesma grade e mantêm as fórmulas visíveis. */
+/* Cinco indicadores compactos, com valores e rodapés alinhados. */
 .financial-kpis {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-auto-rows: 1fr;
@@ -2305,9 +2293,9 @@ main {
   line-height: 1.3;
   min-height: 36px;
 }
-.financial-kpis .kpi > p:not(.aging-data-warning) { min-height: 42px; }
+.financial-kpis .kpi > p:not(.aging-data-warning) { min-height: 42px; margin-bottom: 12px; }
 .financial-kpis .kpi-footer {
-  min-height: 50px;
+  min-height: 38px;
   align-items: flex-start;
   align-content: flex-start;
   font-size: 10px;

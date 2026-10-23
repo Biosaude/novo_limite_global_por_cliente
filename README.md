@@ -1,6 +1,6 @@
 # BIOSAÚDE — Limite Global por Cliente
 
-Dashboard financeiro em React, TypeScript e Vite. A primeira etapa funciona integralmente no navegador: importação Excel, conferência, indicadores, gráficos, rankings, filtros, detalhamento e auditoria. Não há conexão ao Neon, autenticação administrativa ou backend de dados.
+Dashboard financeiro em React, TypeScript e Vite. A primeira etapa funciona integralmente no navegador: importação Excel, conferência, indicadores, gráficos, filtros, detalhamento e auditoria. Não há conexão ao Neon, autenticação administrativa ou backend de dados.
 
 ## Utilização
 
@@ -20,7 +20,7 @@ O sistema aceita `.xlsx` sem senha, até 20 MB, até 100.000 linhas de dados e 2
 
 O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). Os quatro módulos ficam no topo na ordem Visão geral, Análise de Crédito, Auditoria e Gerenciar Base; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os cinco KPIs, incluindo o aging médio ponderado, ocupam uma linha a partir de 1.400 px, com adaptação para três, duas ou uma coluna em telas menores, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
 
-O rótulo **Vencidos (inadimplência)** é compartilhado entre cards, filtros, rankings, detalhamento, prévia da importação e legendas. Os nomes originais das abas, colunas e arquivos Excel são preservados para rastreabilidade e compatibilidade com a planilha oficial. As faixas de inadimplência usam a mesma regra já existente: 1–30, 31–60, 61–90, 91–180 e acima de 180 dias; valores em faixas de diagnóstico também são preservados.
+O rótulo **Vencidos (inadimplência)** é compartilhado entre cards, filtros, detalhamento, prévia da importação e legendas. Os nomes originais das abas, colunas e arquivos Excel são preservados para rastreabilidade e compatibilidade com a planilha oficial. As faixas de inadimplência usam a mesma regra já existente: 1–30, 31–60, 61–90, 91–180 e acima de 180 dias; valores em faixas de diagnóstico também são preservados.
 
 O cabeçalho exibe o exercício selecionado (**FY**), a data e o horário da última aplicação da base (fuso America/Sao_Paulo), a quantidade total de registros e o status. Essa atualização só é registrada quando **Atualizar Dashboard** termina com sucesso; gerar uma prévia ou registrar uma justificativa não altera a data de atualização da base.
 
@@ -39,15 +39,15 @@ As capturas abaixo usam exclusivamente **ARQUIVO_DE_TESTE_VISUAL.xlsx**, gerado 
 - **Recebido YTD:** soma de `Vr.recebido` com `Dt.recebimento` entre 1º de janeiro do ano escolhido e o menor valor entre o fim do mês selecionado e a data de referência.
 - **Exposição Financeira Total:** A Vencer + Vencidos (inadimplência), exclusivamente saldos em aberto. Recebido YTD não compõe a dívida.
 - **Aging Médio dos Vencidos:** Σ(saldo vencido × dias de atraso na posição) / Σ saldo vencido. Média ponderada pelos registros filtrados; sem saldo, “Não aplicável”.
-- **Movimentação gerencial:** soma de A Vencer + Vencidos + Recebido YTD, preservada nos gráficos e rankings, com rótulo explícito. Não é exposição, vendas totais ou crédito aprovado.
+- **Movimentação gerencial:** soma de A Vencer + Vencidos + Recebido YTD, preservada nos gráficos, com rótulo explícito. Não é exposição, vendas totais ou crédito aprovado.
 
-As fórmulas permanecem visíveis nos rodapés dos quatro KPIs financeiros, do aging e dos cards de faixa. As cinco faixas possuem barras horizontais de participação no saldo vencido, e a concentração acima de 180 dias aparece em painel próprio, sem bloqueio automático. Consulte [metodologia, conciliação antes/depois e capturas](docs/VALIDACAO_AGING.md).
+As fórmulas financeiras são preservadas internamente. Nos cinco KPIs superiores, os rodapés mostram registros, percentuais e data-base; as fórmulas continuam visíveis nos cards de faixa. As cinco faixas possuem barras horizontais de participação no saldo vencido, e a concentração acima de 180 dias aparece em painel próprio, sem bloqueio automático. Consulte [metodologia, conciliação antes/depois e capturas](docs/VALIDACAO_AGING.md).
 
 Valores são convertidos com Decimal.js para centavos inteiros, somados dentro da faixa segura de inteiros e formatados em reais somente na interface. Valores inválidos, com precisão superior a centavos ou com overflow são bloqueantes. Valores negativos são preservados e advertidos. Datas civis e diferenças de dias usam UTC para evitar variações de fuso horário.
 
 **Saldos de posição não são séries históricas.** Os filtros de ano e mês alteram o período dos recebimentos; os saldos A Vencer e Vencidos (inadimplência) continuam sendo os da extração importada. A interface informa explicitamente a data da posição e o intervalo YTD. Não se reclassificam títulos automaticamente com a data de hoje.
 
-Os filtros globais de cliente, representante e categoria atualizam cards, gráficos, rankings e auditoria. A pesquisa e a ordenação dentro da tabela atuam somente no ranking exibido. Valores recebidos fora do YTD são preservados na origem e voltam a compor as consultas quando seu período é selecionado. Os gráficos mensais incluem apenas meses presentes na seleção. Composição percentual não é desenhada para saldos negativos, pois um gráfico de setores seria enganoso; o comparativo continua disponível.
+Os filtros globais de cliente, representante e categoria atualizam cards, gráficos e auditoria. A pesquisa e a ordenação da Consulta de Títulos atuam somente nessa consulta. Valores recebidos fora do YTD são preservados na origem e voltam a compor as consultas quando seu período é selecionado. Os gráficos mensais incluem apenas meses presentes na seleção. Composição percentual não é desenhada para saldos negativos, pois um gráfico de setores seria enganoso; o comparativo continua disponível.
 
 ## Análise de Crédito por Cliente
 
@@ -132,7 +132,7 @@ Sem essa variável, os testes com o arquivo oficial são marcados como ignorados
 - `src/credito`: análise por cliente, critérios propostos, gráficos, detalhamento e histórico de propostas.
 - `src/auditoria`: regras de conferência independentes da interface.
 - `src/persistencia`: contrato de repositório e implementação IndexedDB, substituível futuramente por integração autorizada.
-- `src/components`: gerenciamento, gráficos, rankings, auditoria e detalhamento.
+- `src/components`: gerenciamento, gráficos, auditoria e detalhamento.
 - `tests`: testes de serviços e fluxos completos em navegador.
 
 A comparação independente de crédito pode ser repetida com `python scripts/validate_credit_reference.py /caminho/privado/base.xlsx` (Python e openpyxl são necessários apenas para esse teste de desenvolvimento). O relatório detalhado usa hashes dos nomes e não deve ser publicado com dados privados.
@@ -154,3 +154,9 @@ Na Visão geral, clique nos cards ou barras de aging para selecionar uma ou vár
 A consulta inclui pesquisas por cliente/duplicata, ordenação, paginação e acesso ao registro original. **Exportar Excel** e **Exportar PDF** usam todos os resultados selecionados, sem limitar à página visível. Excel tem quatro abas; PDF é A4 paisagem com paginação. Não incluem dados de pacientes e não enviam a base a serviços externos. Os downloads exigem uma base local ativa e resultados válidos.
 
 [Metodologia, rastreabilidade, privacidade, demonstração e conferência financeira](docs/VALIDACAO_COBRANCA_RELATORIOS.md). Para os testes de PDF, instale também Poppler (`pdftotext` e `pdfinfo`).
+
+### Organização da Visão Geral
+
+Os cinco KPIs exibem título, valor, descrição e rodapé, sem fórmulas visíveis. Os percentuais e a data-base permanecem nos rodapés. A distribuição de vencidos e os seis gráficos precedem a **Consulta de Títulos e Pendências Financeiras**, última seção antes do rodapé. O Ranking de Clientes foi removido somente da interface da Visão Geral; os filtros globais, a análise de crédito e o detalhamento dos títulos permanecem disponíveis.
+
+Evidências: [validação dos ajustes de layout](docs/VALIDACAO_REORGANIZACAO_LAYOUT.md).

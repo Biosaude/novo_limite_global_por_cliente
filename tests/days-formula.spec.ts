@@ -25,7 +25,7 @@ test('fórmulas oficiais sem cache importam sem falsos alertas; referência e di
   await expect(page.locator('.preview-totals')).toContainText('150,00');
   await activate(page,true);
   await expect(page.locator('.aging-average .kpi-value')).toHaveText('2 dias');
-  await page.getByRole('button',{name:'CLIENTE SINTÉTICO FÓRMULAS',exact:true}).click();
+  await page.locator('.collection-panel tbody button').filter({hasText:'100/01'}).click();
   await page.getByRole('button',{name:'Linha 2: ver original'}).first().click();
   await expect(page.locator('.original-record')).toContainText('Dias originais/cache: não informado. Dias recalculados: 2.');
   await expect(page.locator('.original-record')).toContainText('E2-TODAY()');

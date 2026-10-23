@@ -17,7 +17,6 @@ import { FinancialKpis } from "./components/FinancialKpis";
 import { EmptyState } from "./components/EmptyState";
 import { ImportManager } from "./components/ImportManager";
 import { AuditTable } from "./components/AuditTable";
-import { Ranking } from "./components/Ranking";
 import { DetailDialog } from "./components/DetailDialog";
 import { InadimplenciaDistribution } from "./components/InadimplenciaDistribution";
 import {
@@ -29,7 +28,6 @@ import {
 import {
   initialFilters,
   selectRecords,
-  groupBy,
   totals,
 } from "./domain/finance";
 import { displayDate, cutoff } from "./domain/dates";
@@ -173,7 +171,6 @@ export default function App() {
     [active, filters],
   );
   const summary = useMemo(() => totals(records), [records]);
-  const clients = useMemo(() => groupBy(records, "client"), [records]);
   const allClients = useMemo(
     () =>
       [
@@ -242,15 +239,6 @@ export default function App() {
       return next;
     });
     setDetail(null);
-  }
-  function showGroup(name: string) {
-    setDetail({
-      title: name,
-      records: records.filter(
-        (record) =>
-          (record.client || "Sem cliente") === name,
-      ),
-    });
   }
   return (
     <div className="app-shell">
@@ -546,9 +534,6 @@ export default function App() {
                     onToggleBand={toggleBand}
                     onClearBands={() => setCollectionQuery(current => ({...current,bands:[]}))}
                   />
-                  {active && <CollectionPanel dataset={active} records={records} filters={filters}
-                    query={collectionQuery} onQueryChange={setCollectionQuery}
-                    onTrace={record => setDetail({title: record.title || "Título sem identificação", records: [record]})} /> }
                   <Suspense
                     fallback={<p role="status">Carregando gráficos…</p>}
                   >
@@ -559,9 +544,12 @@ export default function App() {
                       loaded={!!active}
                     />
                   </Suspense>
+                  {active && <CollectionPanel dataset={active} records={records} filters={filters}
+                    query={collectionQuery} onQueryChange={setCollectionQuery}
+                    onTrace={record => setDetail({title: record.title || "Título sem identificação", records: [record]})} /> }
                 </>
               )}
-              {view === "credito" ? null : view === "auditoria" ? (
+              {view === "auditoria" && (
                 <section className="panel">
                   <div className="panel-title">
                     <div>
@@ -613,13 +601,6 @@ export default function App() {
                     <EmptyState message="Importe uma planilha para conferir valores, datas e possíveis sobreposições." />
                   )}
                 </section>
-              ) : (
-                <Ranking
-                  groups={clients}
-                  total={summary.global}
-                  loaded={!!active}
-                  onDetail={showGroup}
-                />
               )}
             </>
           )}
