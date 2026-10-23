@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { conditions, type ReceiptView, type Condition } from "./analysis";
 import { money, compactMoney, percentage } from "../domain/money";
+import { DonutTotal } from "../components/DonutTotal";
 import { EmptyState } from "../components/EmptyState";
 export const receiptColors = {
   early: "#94a6bf",
@@ -80,7 +81,7 @@ export function ReceiptCharts({ view }: { view: ReceiptView }) {
         !view.summary.negativeCount &&
         view.summary.total > 0 ? (
           <>
-            <ResponsiveContainer width="100%" height={235}>
+            <div className="donut-shell"><DonutTotal value={view.summary.total} label="Recebido"/><ResponsiveContainer width="100%" height={235}>
               <PieChart>
                 <Pie
                   data={view.categories.filter((c) => c.value > 0)}
@@ -98,7 +99,7 @@ export function ReceiptCharts({ view }: { view: ReceiptView }) {
                 </Pie>
                 <Tooltip formatter={tooltip} />
               </PieChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer></div>
             <div className="receipt-legend">
               {view.categories
                 .filter((c) => c.count)

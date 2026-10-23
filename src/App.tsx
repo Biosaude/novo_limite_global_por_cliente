@@ -521,6 +521,7 @@ export default function App() {
                     </select>
                   </label>
                 </div>
+                {active && <div className="active-filter-chips" aria-label="Filtros globais ativos">{(Object.keys(filters) as (keyof Filters)[]).filter(key => filters[key] && filters[key] !== initialFilters(active)[key]).map(key => <button key={key} className="aging-filter-chip" aria-label={`Remover filtro ${{year:"Ano",month:"Mês",client:"Cliente",representative:"Representante",category:"Categoria"}[key]}`} onClick={() => selectFilter(key,initialFilters(active)[key])}>{({year:"Ano",month:"Mês",client:"Cliente",representative:"Representante",category:"Categoria"})[key]}: {key === "category" ? categoryLabel[filters[key] as keyof typeof categoryLabel] : filters[key]} ×</button>)}</div>}
                 <div className="filter-footer">
                   <span>
                     {active
