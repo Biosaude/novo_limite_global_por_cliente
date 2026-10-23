@@ -207,7 +207,7 @@ export function FinancialCharts({
     },
     {
       title: "Distribuição por representante",
-      subtitle: "Top 8 por movimentação gerencial · tabela completa em Representantes",
+      subtitle: "Top 8 por movimentação gerencial · use o filtro Representante para consultar todos",
       content: reps.some((item) => item.name !== "Sem representante") ? (
         <Bars
           data={reps}

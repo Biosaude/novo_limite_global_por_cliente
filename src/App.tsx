@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   ListFilter,
   ShieldCheck,
-  Users,
   BadgeDollarSign,
   X,
 } from "lucide-react";
@@ -45,18 +44,14 @@ const FinancialCharts = lazy(() =>
 );
 type View =
   | "dashboard"
-  | "clientes"
-  | "representantes"
   | "auditoria"
   | "base"
   | "credito";
 const navigation: { id: View; label: string; icon: typeof Activity }[] = [
   { id: "dashboard", label: "Visão geral", icon: LayoutDashboard },
-  { id: "clientes", label: "Clientes", icon: Users },
-  { id: "representantes", label: "Representantes", icon: Activity },
+  { id: "credito", label: "Análise de Crédito", icon: BadgeDollarSign },
   { id: "auditoria", label: "Auditoria", icon: ShieldCheck },
   { id: "base", label: "Gerenciar Base", icon: Database },
-  { id: "credito", label: "Análise de Crédito", icon: BadgeDollarSign },
 ];
 const emptyFilters: Filters = {
   year: "",
@@ -171,10 +166,6 @@ export default function App() {
   );
   const summary = useMemo(() => totals(records), [records]);
   const clients = useMemo(() => groupBy(records, "client"), [records]);
-  const representatives = useMemo(
-    () => groupBy(records, "representative"),
-    [records],
-  );
   const allClients = useMemo(
     () =>
       [
@@ -242,14 +233,11 @@ export default function App() {
     setDetail(null);
   }
   function showGroup(name: string) {
-    const representative = view === "representantes";
     setDetail({
       title: name,
       records: records.filter(
         (record) =>
-          (representative
-            ? record.representative || "Sem representante"
-            : record.client || "Sem cliente") === name,
+          (record.client || "Sem cliente") === name,
       ),
     });
   }
@@ -609,13 +597,9 @@ export default function App() {
                 </section>
               ) : (
                 <Ranking
-                  key={
-                    view === "representantes" ? "representatives" : "clients"
-                  }
-                  groups={view === "representantes" ? representatives : clients}
+                  groups={clients}
                   total={summary.global}
                   loaded={!!active}
-                  representative={view === "representantes"}
                   onDetail={showGroup}
                 />
               )}

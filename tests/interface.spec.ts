@@ -65,8 +65,8 @@ test("interface vazia: cinco cards, seis gráficos, filtros indisponíveis e res
   for (const select of await page.getByRole("combobox").all())
     await expect(select).toBeDisabled();
   for (const name of [
-    "Clientes",
-    "Representantes",
+    "Visão geral",
+    "Análise de Crédito",
     "Auditoria",
     "Gerenciar Base",
   ]) {
@@ -116,13 +116,10 @@ test("importação calcula valores efetivos, gráficos e rankings; filtros respe
     .selectOption("overdue");
   await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/50,20/);
   await page.getByRole("button", { name: "Limpar filtros" }).click();
-  await page
-    .getByRole("navigation")
-    .getByRole("button", { name: "Representantes", exact: true })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Representante Teste", exact: true }),
-  ).toBeVisible();
+  await page.getByLabel("Representante", {exact:true}).selectOption("Representante Teste");
+  await page.getByRole("button", {name:"Cliente Teste A",exact:true}).click();
+  await expect(page.getByRole("dialog")).toContainText("Representante Teste");
+  await page.getByRole("button", {name:"Fechar detalhamento"}).click();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -458,7 +455,7 @@ test("painel sem menu lateral: categoria de inadimplência consistente e gráfic
   await importFixture(page);
   await expect(page.locator(".sidebar")).toHaveCount(0);
   const nav = page.getByRole("navigation", { name: "Navegação principal" });
-  await expect(nav.getByRole("button")).toHaveCount(6);
+  await expect(nav.getByRole("button")).toHaveCount(4);
   for (const button of await nav.getByRole("button").all())
     await expect(button).toBeVisible();
   await expect(page.locator(".kpi.overdue")).toContainText(
@@ -528,11 +525,11 @@ test("fórmulas permanentes, aging ponderado e percentuais respeitam seleção e
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/");
   await importFixture(page);
-  await expect(page.locator(".financial-kpis .kpi")).toHaveCount(4);
+  await expect(page.locator(".financial-kpis .kpi")).toHaveCount(5);
   await expect(page.locator(".financial-kpis .kpi-label")).toHaveText([
-    "Exposição Financeira Total", "A Vencer", "Vencidos (inadimplência)", "Recebido YTD",
+    "Exposição Financeira Total", "A Vencer", "Vencidos (inadimplência)", "Recebido YTD", "Aging Médio dos Vencidos",
   ]);
-  await expect(page.locator(".financial-kpis .kpi-value")).toHaveText([/150,30/, /100,10/, /50,20/, /50,70/]);
+  await expect(page.locator(".financial-kpis .kpi-value")).toHaveText([/150,30/, /100,10/, /50,20/, /50,70/, "10 dias"]);
   await expect(page.locator(".aging-average .kpi-value")).toHaveText("10 dias");
   await expect(page.locator(".kpi.upcoming .kpi-footer")).toContainText("66,6%");
   await expect(page.locator(".kpi.overdue .kpi-footer")).toContainText("33,4%");
@@ -545,8 +542,9 @@ test("fórmulas permanentes, aging ponderado e percentuais respeitam seleção e
   const card = (await page.locator(".aging-average").boundingBox())!;
   const distribution = (await page.locator(".aging-distribution").boundingBox())!;
   const first = (await page.locator(".financial-kpis").boundingBox())!;
-  expect(card.y).toBeGreaterThan(first.y + first.height);
-  expect(distribution.y).toBeGreaterThan(card.y + card.height);
+  expect(card.y).toBeGreaterThanOrEqual(first.y);
+  expect(card.y + card.height).toBeLessThanOrEqual(first.y + first.height + 1);
+  expect(distribution.y).toBeGreaterThan(first.y + first.height);
   await expect(page.locator(".aging-share-row")).toHaveCount(5);
   await expect(page.locator(".aging-share-row").first()).toContainText("100%");
   await expect(page.locator(".critical-concentration > strong")).toHaveText("0%");

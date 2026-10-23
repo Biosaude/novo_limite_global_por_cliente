@@ -2263,7 +2263,6 @@ main {
 .kpi-formula > span { display: block; margin-top: 6px; }
 .financial-kpis .kpi-footer { margin-top: auto; flex-wrap: wrap; gap: 6px 10px; }
 .financial-kpis .kpi-footer > span:last-child { margin-left: 0; }
-.aging-kpi-row { display: grid; grid-template-columns: minmax(0, 540px); margin: 18px 0 22px; }
 .aging-average .kpi-value { white-space: normal; }
 .aging-average .kpi-label { color: var(--navy); }
 .aging-average .kpi-footer { flex-wrap: wrap; gap: 8px; }
@@ -2292,3 +2291,35 @@ main {
 }
 .aging-average { border-left-color: var(--accent); }
 .aging-average .kpi-label > span { color: var(--accent); background: var(--accent-soft); }
+
+/* Os cinco indicadores compartilham a mesma grade e mantêm as fórmulas visíveis. */
+.financial-kpis {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  align-items: stretch;
+}
+.financial-kpis .kpi { min-width: 0; }
+.financial-kpis .kpi-label { min-height: 44px; }
+.financial-kpis .kpi-value {
+  font-size: clamp(21px, 1.7vw, 27px);
+  line-height: 1.3;
+  min-height: 36px;
+}
+.financial-kpis .kpi > p:not(.aging-data-warning) { min-height: 42px; }
+.financial-kpis .kpi-footer {
+  min-height: 50px;
+  align-items: flex-start;
+  align-content: flex-start;
+  font-size: 10px;
+}
+.financial-kpis .kpi-footer > span { white-space: normal; }
+@media (max-width: 1399px) {
+  .financial-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1000px) {
+  .financial-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .financial-kpis { grid-template-columns: minmax(0, 1fr); }
+  .financial-kpis .kpi-value { font-size: 27px; }
+}

@@ -10,7 +10,7 @@ Dashboard financeiro em React, TypeScript e Vite. A primeira etapa funciona inte
 4. Confira todas as abas, a linha do cabeçalho e as colunas. Para A Vencer e Vencidos (inadimplência), mapeie **saldo em aberto**; para Recebido, **valor efetivamente recebido** e **data de recebimento**. Não use o valor nominal da duplicata.
 5. A prévia é calculada automaticamente quando as abas e colunas são reconhecidas. Confira quantidade de registros, valores e ocorrências. Se ajustar o mapeamento ou a referência, clique em **Validar estrutura e calcular totais** para gerar uma nova prévia.
 6. Marque a confirmação da conferência na prévia e clique em **Atualizar Dashboard**, nos três controles principais. O botão permanece desabilitado sem uma base validada e confirmada. Erros de valores ou de datas essenciais de recebimento bloqueiam a aplicação. Advertências não excluem registros nem bloqueiam o dashboard.
-7. Use Visão geral, Clientes, Representantes, Auditoria e **Análise de Crédito**. Clique no nome de um grupo para abrir os títulos e consultar todas as células originais de um registro.
+7. Use o menu **Visão geral → Análise de Crédito → Auditoria → Gerenciar Base**. Consulte clientes e representantes pelos filtros e gráficos da Visão geral. Clique no nome de um grupo para abrir os títulos e consultar todas as células originais de um registro.
 
 A base anterior permanece ativa enquanto um novo arquivo é processado, se houver erros ou enquanto não houver confirmação explícita da substituição. Abas desconhecidas exigem categoria definida; não são ignoradas automaticamente. Cabeçalhos repetidos continuam distinguíveis pelo número da coluna. Linhas vazias e conteúdo anterior ao cabeçalho ficam preservados na origem, com suas contagens na conferência, sem entrar como títulos financeiros.
 
@@ -18,7 +18,7 @@ O sistema aceita `.xlsx` sem senha, até 20 MB, até 100.000 linhas de dados e 2
 
 ## Interface e modelo Excel
 
-O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). As seções de navegação, incluindo Análise de Crédito, ficam no topo; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os quatro KPIs financeiros usam a largura do painel, o aging médio ponderado fica logo abaixo, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
+O layout segue as imagens fornecidas: fundo cinza muito claro, cards brancos com borda lateral vermelha ou cinza-azulada, títulos em azul-marinho, destaque vermelho e três controles horizontais alinhados em Gerenciar Base (empilhados no celular). Os quatro módulos ficam no topo na ordem Visão geral, Análise de Crédito, Auditoria e Gerenciar Base; o menu lateral foi removido. Os filtros ocupam um bloco em grade, os cinco KPIs, incluindo o aging médio ponderado, ocupam uma linha a partir de 1.400 px, com adaptação para três, duas ou uma coluna em telas menores, e a distribuição da inadimplência fica em uma faixa própria de cards. O gráfico mensal ocupa a área principal, com as faixas de atraso ao lado em telas largas.
 
 O rótulo **Vencidos (inadimplência)** é compartilhado entre cards, filtros, rankings, detalhamento, prévia da importação e legendas. Os nomes originais das abas, colunas e arquivos Excel são preservados para rastreabilidade e compatibilidade com a planilha oficial. As faixas de inadimplência usam a mesma regra já existente: 1–30, 31–60, 61–90, 91–180 e acima de 180 dias; valores em faixas de diagnóstico também são preservados.
 
@@ -142,3 +142,7 @@ A integração ao Neon, a administração autenticada e a publicação de bases 
 ## Fórmulas de vencimento e auditoria
 
 [Regras, contagem dos alertas, validação financeira e passos para importar](docs/VALIDACAO_FORMULAS_VENCIMENTO.md). As bases locais antigas têm somente a análise dos dias reavaliada em memória, sem migração ou mudança da referência histórica.
+
+## Layout dos KPIs e navegação
+
+[Reorganização visual, valores preservados, testes e capturas](docs/VALIDACAO_LAYOUT_KPIS_MENU.md). Fórmulas, filtros de clientes/representantes, dados e módulos financeiros permanecem preservados.
