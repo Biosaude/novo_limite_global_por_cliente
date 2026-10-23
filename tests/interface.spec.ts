@@ -83,7 +83,7 @@ test("interface vazia: cinco cards, seis gráficos, filtros indisponíveis e res
   expect(errors).toEqual([]);
 });
 
-test("importação calcula valores efetivos, gráficos e rankings; filtros respeitam posição e YTD", async ({
+test("importação calcula valores efetivos, gráficos e consulta; filtros respeitam posição e YTD", async ({
   page,
 }) => {
   const errors: string[] = [],
@@ -98,9 +98,8 @@ test("importação calcula valores efetivos, gráficos e rankings; filtros respe
   await expect(page.locator(".chart-panel svg.recharts-surface")).toHaveCount(
     6,
   );
-  await expect(
-    page.getByRole("button", { name: "Cliente Teste A", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", {name: "Ranking de clientes"})).toHaveCount(0);
+  await expect(page.getByLabel("Pesquisar ranking")).toHaveCount(0);
   await page
     .getByLabel("Mês de referência", { exact: true })
     .selectOption("09");
@@ -117,7 +116,7 @@ test("importação calcula valores efetivos, gráficos e rankings; filtros respe
   await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/50,20/);
   await page.getByRole("button", { name: "Limpar filtros" }).click();
   await page.getByLabel("Representante", {exact:true}).selectOption("Representante Teste");
-  await page.getByRole("button", {name:"Cliente Teste A",exact:true}).click();
+  await page.locator(".collection-panel tbody button").first().click();
   await expect(page.getByRole("dialog")).toContainText("Representante Teste");
   await page.getByRole("button", {name:"Fechar detalhamento"}).click();
   expect(
@@ -134,8 +133,7 @@ test("detalhamento, originais, auditoria e justificativa local funcionam e persi
 }) => {
   await page.goto("/");
   await importFixture(page, true);
-  await page
-    .getByRole("button", { name: "Cliente Teste A", exact: true })
+  await page.locator(".collection-panel tbody button").first()
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page
@@ -466,12 +464,12 @@ test("painel sem menu lateral: categoria de inadimplência consistente e gráfic
       .getByRole("combobox", { name: "Categoria financeira" })
       .locator('option[value="overdue"]'),
   ).toHaveText("Vencidos (inadimplência)");
-  await expect(
-    page.getByRole("columnheader", {
-      name: "Vencidos (inadimplência)",
-      exact: true,
-    }),
-  ).toBeVisible();
+  await expect(page.locator(".collection-panel").getByRole("columnheader", {
+    name: "Situação", exact: true,
+  })).toBeVisible();
+  await expect(page.locator(".collection-panel").getByRole("cell", {
+    name: "Vencidos (inadimplência)", exact: true,
+  })).toBeVisible();
   await expect(page.locator(".aging-card")).toHaveCount(5);
   const firstBand = page
     .locator(".aging-card")
@@ -520,7 +518,7 @@ test("painel sem menu lateral: categoria de inadimplência consistente e gráfic
 });
 
 
-test("fórmulas permanentes, aging ponderado e percentuais respeitam seleção e layout", async ({page}, testInfo) => {
+test("KPIs sem fórmulas, aging ponderado e percentuais respeitam seleção e layout", async ({page}, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/");
@@ -534,7 +532,8 @@ test("fórmulas permanentes, aging ponderado e percentuais respeitam seleção e
   await expect(page.locator(".kpi.upcoming .kpi-footer")).toContainText("66,6%");
   await expect(page.locator(".kpi.overdue .kpi-footer")).toContainText("33,4%");
   await expect(page.locator(".kpi.received .kpi-footer")).not.toContainText("%");
-  for (const formula of await page.locator(".financial-kpis .kpi-formula, .aging-average .kpi-formula, .aging-card .kpi-formula").all()) {
+  await expect(page.locator(".financial-kpis .kpi-formula")).toHaveCount(0);
+  for (const formula of await page.locator(".aging-card .kpi-formula").all()) {
     await expect(formula).toBeVisible();
     await expect(formula).toContainText("Cálculo:");
     expect(await formula.evaluate(e => e.scrollWidth <= e.clientWidth && e.scrollHeight <= e.clientHeight)).toBe(true);

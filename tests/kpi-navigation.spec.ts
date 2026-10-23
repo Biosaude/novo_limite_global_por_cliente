@@ -30,6 +30,18 @@ test('cinco KPIs em grade uniforme, valores longos legíveis e menu com quatro i
   await expect(nav.getByRole('button',{name:'Representantes',exact:true})).toHaveCount(0);
   const cards=page.locator('.financial-kpis .kpi');
   await expect(cards).toHaveCount(5);
+  await expect(cards.locator('.kpi-formula')).toHaveCount(0);
+  await expect(page.locator('.financial-kpis')).not.toContainText(/Cálculo:|Participação =|Inadimplência =/);
+  await expect(page.getByRole('heading',{name:'Ranking de clientes'})).toHaveCount(0);
+  await expect(page.getByLabel('Pesquisar ranking')).toHaveCount(0);
+  const consultation=page.locator('.collection-panel');
+  await expect(consultation).toBeVisible();
+  expect(await consultation.evaluate(panel=>{
+    const footer=panel.closest('main')!.querySelector('footer')!;
+    const charts=[...panel.closest('main')!.querySelectorAll('.chart-panel')];
+    return panel.nextElementSibling===footer && charts.every(chart=>Boolean(chart.compareDocumentPosition(panel)&Node.DOCUMENT_POSITION_FOLLOWING));
+  })).toBe(true);
+
   await expect(cards.locator('.kpi-value')).toHaveText([/36\.000\.000,30/,/25\.000\.000,10/,/11\.000\.000,20/,/57\.000\.020,70/,'10 dias']);
   const boxes=await cards.evaluateAll(elements=>elements.map(element=>{
     const card=element.getBoundingClientRect(),value=element.querySelector('.kpi-value')!.getBoundingClientRect(),footer=element.querySelector('.kpi-footer')!.getBoundingClientRect();
@@ -55,6 +67,13 @@ test('cinco KPIs em grade uniforme, valores longos legíveis e menu com quatro i
   if(process.env.BIOSAUDE_CAPTURE_KPI_LAYOUT&&['desktop','mobile'].includes(testInfo.project.name)){
     await page.locator('.financial-kpis').screenshot({path:`docs/preview-kpi-row-${testInfo.project.name}.png`});
     if(testInfo.project.name==='desktop')await nav.screenshot({path:'docs/preview-navigation-four-items.png'});
+  }
+  if(process.env.BIOSAUDE_CAPTURE_LAYOUT_CLEANUP&&['desktop','mobile'].includes(testInfo.project.name)){
+    await page.locator('.financial-kpis').screenshot({path:`docs/preview-clean-kpis-${testInfo.project.name}.png`});
+    if(testInfo.project.name==='desktop'){
+      await page.screenshot({path:'docs/preview-dashboard-order.png',fullPage:true});
+      await consultation.screenshot({path:'docs/preview-final-consultation.png'});
+    }
   }
   expect(errors).toEqual([]);
 });
@@ -86,7 +105,7 @@ test('navegação preserva base e filtros; cliente e representante continuam ace
   }
   await expect(page.locator('.financial-kpis .kpi-value')).toHaveText(before);
   await expect(page.locator('.kpi.exposure .kpi-value')).toHaveText(/50,20/);
-  await page.getByRole('button',{name:'Cliente Teste A',exact:true}).click();
+  await page.locator('.collection-panel tbody button').first().click();
   await expect(page.getByRole('dialog')).toContainText('Representante Teste');
   await page.getByRole('button',{name:'Fechar detalhamento'}).click();
   await page.getByRole('button',{name:'Limpar filtros'}).click();

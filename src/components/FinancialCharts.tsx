@@ -202,7 +202,7 @@ export function FinancialCharts({
     },
     {
       title: "Principais clientes",
-      subtitle: "Top 8 por movimentação gerencial · ranking completo abaixo",
+      subtitle: "Top 8 por movimentação gerencial · use o filtro Cliente para consultar todos",
       content: <Bars data={clients} horizontal denominator={summary.global} />,
     },
     {
