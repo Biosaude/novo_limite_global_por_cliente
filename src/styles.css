@@ -2374,3 +2374,50 @@ button.aging-share-row { width: 100%; padding: 7px 4px; border: 0; border-radius
 @media(max-width:1100px){.receipt-filter-fields{grid-template-columns:repeat(3,minmax(0,1fr));}.receipt-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:750px){.receipt-filter-fields{grid-template-columns:repeat(2,minmax(0,1fr));}.receipt-charts{grid-template-columns:minmax(0,1fr);}.receipt-query{grid-template-columns:minmax(0,1fr);}}
 @media(max-width:560px){.receipt-filter-fields,.receipt-kpis{grid-template-columns:minmax(0,1fr);}.receipt-detail .panel-title{align-items:flex-start;flex-direction:column;gap:12px;}.receipt-legal > strong{font-size:24px;}}
+
+/* Fase 1: hierarquia executiva, tipografia local e componentes compartilhados. */
+@font-face { font-family:Inter; src:url('/fonts/inter-latin-wght-normal.woff2') format('woff2'); font-weight:100 900; font-style:normal; font-display:swap; }
+:root { font-family:Inter,ui-sans-serif,system-ui,sans-serif; --surface-radius:14px; }
+main { max-width:1800px; padding-left:24px; padding-right:24px; }
+.main-title { font-size:28px; letter-spacing:-.8px; line-height:1.2; }
+.topbar h1 { font-size:22px; letter-spacing:-.5px; }
+.panel,.filters,.kpi,.aging-card,.top-navigation { border-radius:var(--surface-radius); box-shadow:0 3px 16px #1d2c4705; }
+.panel h2,.filters h2,.distribution-heading h2,.panel h3 { font-size:19px; line-height:1.35; letter-spacing:-.3px; }
+.panel-title p,.filter-heading p,.base-caption,.kpi p,.helper,.definition,.filter-help,.filter-footer,.aging-card p { font-size:12px; line-height:1.65; }
+.filters label,.receipt-filter-fields label,.receipt-query label,.collection-controls label { font-size:12px; letter-spacing:.1px; }
+.kpi { border-left-width:1px; border-top:3px solid var(--slate); padding:18px 16px 14px; transition:box-shadow .18s ease,transform .18s ease; }
+.kpi.global,.kpi.overdue,.kpi.aging-average,.receipt-kpis .kpi { border-left-color:var(--line); border-top-color:var(--accent); }
+.kpi:hover { box-shadow:0 7px 22px #1d2c470c; }
+.kpi-label { font-size:11px; line-height:1.45; letter-spacing:.3px; }
+.kpi-label > span { border-radius:10px; }
+.kpi-value,.financial-kpis .kpi-value,.receipt-kpis .kpi-value { font-size:clamp(26px,1.7vw,32px);font-variant-numeric:tabular-nums;letter-spacing:-1px; }
+.financial-kpis .kpi-footer { font-size:11px; min-height:52px; }
+.financial-kpis .kpi > p:not(.aging-data-warning) { min-height:42px; }
+.kpi-progress { display:block;appearance:none;width:100%;height:4px;border:0;border-radius:10px;margin:0 0 10px;background:#edf0f6; }
+.kpi-progress::-webkit-progress-bar { background:#edf0f6;border-radius:10px; }.kpi-progress::-webkit-progress-value { background:var(--slate);border-radius:10px; }.overdue .kpi-progress::-webkit-progress-value { background:var(--accent); }.kpi-progress::-moz-progress-bar { background:var(--slate); }
+.financial-kpis .kpi { position:relative; }.financial-kpis .kpi-progress { position:absolute;left:16px;bottom:78px;width:calc(100% - 32px); }
+.financial-kpis .kpi > p:not(.aging-data-warning) { margin-bottom:24px; }
+.aging-card { padding:18px;transition:background .18s ease,box-shadow .18s ease; }.aging-card h3 { font-size:12px; }.aging-card > strong { font-size:24px; }.aging-card .kpi-formula { font-size:11px; }
+.chart-legend,.receipt-legend { font-size:12px;gap:12px;line-height:1.65; }.chart-legend i { border-radius:3px; }.recharts-text { font-size:11px; }
+.donut-shell { position:relative;min-width:0; }.donut-total { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;pointer-events:none;z-index:1; }.donut-total span { font-size:11px;color:var(--muted); }.donut-total strong { font-size:18px;color:var(--navy);letter-spacing:-.5px; }
+.active-filter-chips { display:flex;gap:8px;flex-wrap:wrap;margin-top:14px; }.active-filter-chips:empty { display:none; }
+.top-navigation { padding:9px; }.nav-item { font-size:12px; min-height:40px; }
+.table-scroll { max-width:100%; }table { font-size:12px; }th { font-size:11px; }td { line-height:1.5; }.secondary,.primary { font-size:12px;min-height:38px;border-radius:8px; }
+.credit-module .panel h3,.receipt-chart h3,.receipt-detail h3,.receipt-comparison h3 { font-size:19px; }
+@media(max-width:1399px){.financial-kpis .kpi-value { font-size:28px; }}
+@media(max-width:720px){main{padding-left:16px;padding-right:16px;}.main-title{font-size:26px;}.topbar h1{font-size:18px;}.panel h2,.panel h3{font-size:18px;}.kpi-value,.financial-kpis .kpi-value{font-size:28px;}}
+@media(prefers-reduced-motion:reduce){.kpi,.aging-card{transition:none;}}
+
+/* Gestão operacional em memória; componentes executivos compartilhados. */
+.management-module { display:grid;gap:22px;min-width:0; }.management-module > .panel,.management-module > .filters { margin:0; }
+.management-fields,.management-form { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px; }
+.management-fields label,.management-form label,.management-toolbar label { display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--muted);min-width:0; }
+.management-module input:not([type=checkbox]):not([type=file]),.management-module select { min-width:0;width:100%;min-height:40px;padding:9px 11px;background:#fafbfe;border:1px solid var(--line);border-radius:8px;color:var(--navy);font:inherit; }
+.management-kpis { grid-template-columns:repeat(3,minmax(0,1fr));margin:0; }.management-kpis .kpi { display:flex;flex-direction:column;min-width:0; }.management-kpis .kpi-label { min-height:44px; }.management-kpis .kpi-value { font-size:28px;min-height:40px; }.management-kpis .kpi p { min-height:40px; }
+.management-charts { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px; }.management-charts .panel { margin:0;min-width:0; }.management-module h3 { margin:0 0 12px; }
+.management-form { margin:20px 0; }.management-form button { align-self:end;min-height:40px; }
+.process-links { grid-column:1/-1;background:#f8f9fc;border:1px solid var(--line);border-radius:10px;padding:16px; }.process-title-list { max-height:220px;overflow:auto;display:grid;gap:9px;margin:14px 0; }.process-title-list label,.management-form .process-confirm { flex-direction:row;align-items:flex-start;line-height:1.6; }.process-title-list input,.process-confirm input { margin-top:3px;flex-shrink:0;accent-color:var(--accent); }
+.management-toolbar { display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end; }.management-toolbar input[type=file] { max-width:240px;font-size:11px; }.management-query table { min-width:1600px; }.process-panel table { min-width:1900px; }.import-operations { background:#f8f9fc;border:1px solid var(--line);padding:16px;margin-top:16px;border-radius:10px; }.import-operations > label { display:block;margin:12px 0; }.operational-warning { margin:0; }.management-module .table-scroll th,.management-module .table-scroll td { text-align:left; }
+@media(min-width:1700px){.management-kpis{grid-template-columns:repeat(6,minmax(0,1fr));}.management-kpis .kpi-value{font-size:26px;overflow-wrap:anywhere;}}
+@media(max-width:1100px){.management-fields,.management-form{grid-template-columns:repeat(2,minmax(0,1fr));}.management-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}.management-charts{grid-template-columns:minmax(0,1fr);}}
+@media(max-width:560px){.management-fields,.management-form,.management-kpis{grid-template-columns:minmax(0,1fr);}.management-toolbar{align-items:stretch;flex-direction:column;}.management-query .panel-title{align-items:flex-start;flex-direction:column;gap:14px;}}

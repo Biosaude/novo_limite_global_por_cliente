@@ -1,5 +1,6 @@
 import {
   ResponsiveContainer,
+  ReferenceDot,
   PieChart,
   Pie,
   Cell,
@@ -16,6 +17,7 @@ import type { FinancialRecord, Totals } from "../domain/types";
 import { groupBy, aging, monthly } from "../domain/finance";
 import { compactMoney, money, percentage } from "../domain/money";
 import { categoryLabel } from "../domain/types";
+import { DonutTotal } from "./DonutTotal";
 import { EmptyState } from "./EmptyState";
 const colors = ["#96a6bf", "#c71925", "#334a6e"];
 const short = (name: string) =>
@@ -126,11 +128,13 @@ export function FinancialCharts({
   summary,
   reference,
   loaded,
+  selectedPeriod = "",
 }: {
   records: FinancialRecord[];
   summary: Totals;
   reference: string;
   loaded: boolean;
+  selectedPeriod?: string;
 }) {
   const categories = (["upcoming", "overdue", "received"] as const).map(
     (key) => ({
@@ -158,7 +162,7 @@ export function FinancialCharts({
         <EmptyState message="Os valores desta seleção são zero; não há composição percentual." />
       ) : (
         <>
-          <ResponsiveContainer width="100%" height={225}>
+          <div className="donut-shell"><DonutTotal value={summary.global} label="Total"/><ResponsiveContainer width="100%" height={225}>
             <PieChart>
               <Pie
                 data={categories}
@@ -175,7 +179,7 @@ export function FinancialCharts({
               </Pie>
               <Tooltip formatter={tooltip(summary.global)} />
             </PieChart>
-          </ResponsiveContainer>
+          </ResponsiveContainer></div>
           <div className="chart-legend">
             {categories.map((item, index) => (
               <span key={item.name}>
@@ -234,7 +238,7 @@ export function FinancialCharts({
     },
     {
       title: "Recebimentos por mês",
-      subtitle: "Somente meses presentes nos recebimentos selecionados",
+      subtitle: `Somente meses presentes nos recebimentos selecionados${selectedPeriod ? ` · referência ${selectedPeriod}` : ""}`,
       content: months.length ? (
         <>
           <ResponsiveContainer width="100%" height={270}>
@@ -258,6 +262,7 @@ export function FinancialCharts({
                 strokeWidth={2}
                 isAnimationActive={false}
               />
+              {months.some(month => month.name === selectedPeriod) && <ReferenceDot x={selectedPeriod} y={months.find(month => month.name === selectedPeriod)!.value} r={5} fill="#c71925" stroke="#fff" strokeWidth={2} />}
             </LineChart>
           </ResponsiveContainer>
           <div className="chart-legend">

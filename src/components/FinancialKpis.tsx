@@ -28,6 +28,7 @@ export function FinancialKpis({ records, summary, reference, loaded }: {
             {loaded ? money(summary[key]) : <>—<small>BRL</small></>}
           </div>
           <p>{description}</p>
+          {(key === "upcoming" || key === "overdue") && loaded && summary.exposure > 0 && summary.upcoming >= 0 && summary.overdue >= 0 && <progress className="kpi-progress" aria-label={`Participação de ${title}`} max={summary.exposure} value={summary[key]} />}
           <div className="kpi-footer">
             <span>{loaded ? `${records.filter(r => key === "exposure" ? r.category !== "received" : r.category === key).length.toLocaleString("pt-BR")} registros` : "Aguardando base"}</span>
             {(key === "upcoming" || key === "overdue") && <span>

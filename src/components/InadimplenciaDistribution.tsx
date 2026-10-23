@@ -75,12 +75,12 @@ export function InadimplenciaDistribution({
           disabled={!loaded || band.bandIndex < 1 || band.bandIndex > 5} onClick={() => onToggleBand(band.bandIndex as AgingBandIndex)}>
           <span>{band.name}</span>
           <div className="aging-share-track" aria-hidden="true">
-            <div className={`aging-share-fill aging-fill-${band.bandIndex}`} style={{width: `${loaded && overdue > 0 ? Math.max(0, Math.min(100, band.value / overdue * 100)) : 0}%`}} />
+            <div className={`aging-share-fill aging-fill-${band.bandIndex}`} style={{width: `${loaded && overdue > 0 && displayed.every(item => item.value >= 0) ? Math.max(0, Math.min(100, band.value / overdue * 100)) : 0}%`}} />
           </div>
           <strong>{loaded ? percentage(band.value, overdue) : "—"}</strong>
           <span>{loaded ? money(band.value) : "—"}</span>
         </button>)}
-        {loaded && (overdue < 0 || displayed.some(band => band.value < 0)) && <p className="helper">Valores negativos preservados nos números; as barras mostram apenas participações positivas. Confira a Auditoria.</p>}
+        {loaded && (overdue < 0 || displayed.some(band => band.value < 0)) && <p className="helper">Valores negativos preservados nos números; barras proporcionais indisponíveis nesta seleção. Confira a Auditoria.</p>}
       </div>
       <aside className="critical-concentration" aria-label="Concentração de inadimplência acima de 180 dias">
         <div><h3>Concentração de inadimplência acima de 180 dias</h3>

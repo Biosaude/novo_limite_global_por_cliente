@@ -57,6 +57,7 @@ test("recebimentos: navegação, KPIs, filtros independentes, gráficos e rastre
   await expect(page.getByRole("navigation").getByRole("button")).toHaveText([
     "Visão geral",
     "Análise de Recebimentos",
+    "Gestão da Inadimplência",
     "Análise de Crédito",
     "Auditoria",
     "Gerenciar Base",

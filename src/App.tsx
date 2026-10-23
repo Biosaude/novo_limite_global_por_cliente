@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   ArrowDownLeft,
+  Scale,
   Check,
   Database,
   FileSpreadsheet,
@@ -34,6 +35,8 @@ import {
 import { displayDate, cutoff } from "./domain/dates";
 import { BaseHistory } from "./components/BaseHistory";
 import { localRepository } from "./persistencia/repository";
+import {emptyOperations,type Operations} from "./inadimplencia/model";
+const ManagementModule=lazy(()=>import("./inadimplencia/ManagementModule").then(module=>({default:module.ManagementModule})));
 const ReceiptsModule = lazy(() =>
   import("./recebimentos/ReceiptsModule").then((module) => ({
     default: module.ReceiptsModule,
@@ -50,6 +53,7 @@ const FinancialCharts = lazy(() =>
   })),
 );
 type View =
+  | "gestao"
   | "recebimentos"
   | "dashboard"
   | "auditoria"
@@ -58,6 +62,7 @@ type View =
 const navigation: { id: View; label: string; icon: typeof Activity }[] = [
   { id: "dashboard", label: "Visão geral", icon: LayoutDashboard },
   { id: "recebimentos", label: "Análise de Recebimentos", icon: ArrowDownLeft },
+  { id: "gestao", label: "Gestão da Inadimplência", icon: Scale },
   { id: "credito", label: "Análise de Crédito", icon: BadgeDollarSign },
   { id: "auditoria", label: "Auditoria", icon: ShieldCheck },
   { id: "base", label: "Gerenciar Base", icon: Database },
@@ -77,6 +82,9 @@ export default function App() {
     [loading, setLoading] = useState(true),
     [storageError, setStorageError] = useState("");
   const [collectionQuery, setCollectionQuery] = useState<CollectionQuery>(initialCollectionQuery);
+  const [operations,setOperations]=useState<Record<string,Operations>>({});
+  const emptyStore=useMemo(()=>emptyOperations(),[]);
+  const operationKey=active?`${active.id}:${active.reference}`:"empty";
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [versions, setVersions] = useState<Dataset[]>([]);
   const [durableIds, setDurableIds] = useState<string[]>([]);
@@ -377,6 +385,10 @@ export default function App() {
                 onRestore={restore}
               />
             </>
+          ) : view === "gestao" ? (
+            <Suspense fallback={<p role="status">Carregando gestão da inadimplência…</p>}>
+              <ManagementModule key={operationKey} dataset={active} store={operations[operationKey]??emptyStore} onChange={next=>setOperations(current=>({...current,[operationKey]:next}))} onTrace={record=>setDetail({title:record.title||"Duplicata",records:[record]})}/>
+            </Suspense>
           ) : view === "recebimentos" ? (
             <Suspense
               fallback={
@@ -521,6 +533,7 @@ export default function App() {
                     </select>
                   </label>
                 </div>
+                {active && <div className="active-filter-chips" aria-label="Filtros globais ativos">{(Object.keys(filters) as (keyof Filters)[]).filter(key => filters[key] && filters[key] !== initialFilters(active)[key]).map(key => <button key={key} className="aging-filter-chip" aria-label={`Remover filtro ${{year:"Ano",month:"Mês",client:"Cliente",representative:"Representante",category:"Categoria"}[key]}`} onClick={() => selectFilter(key,initialFilters(active)[key])}>{({year:"Ano",month:"Mês",client:"Cliente",representative:"Representante",category:"Categoria"})[key]}: {key === "category" ? categoryLabel[filters[key] as keyof typeof categoryLabel] : filters[key]} ×</button>)}</div>}
                 <div className="filter-footer">
                   <span>
                     {active
@@ -562,6 +575,7 @@ export default function App() {
                     fallback={<p role="status">Carregando gráficos…</p>}
                   >
                     <FinancialCharts
+                      selectedPeriod={`${filters.month}/${filters.year}`}
                       records={records}
                       summary={summary}
                       reference={active?.reference ?? ""}
