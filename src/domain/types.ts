@@ -38,6 +38,12 @@ export interface Mapping {
   header: number;
   fields: Record<Field, number>;
 }
+export interface DayCalculation {
+  kind: "formula" | "numeric" | "empty" | "invalid-formula" | "invalid-value";
+  formula: string | null;
+  reference: string;
+  days: number | null;
+}
 export interface FinancialRecord {
   id: string;
   sheet: string;
@@ -50,6 +56,7 @@ export interface FinancialRecord {
   due: string | null;
   received: string | null;
   reportedDays: number | null;
+  dayCalculation?: DayCalculation;
   issued?: string | null;
   document?: string;
   installment?: string;

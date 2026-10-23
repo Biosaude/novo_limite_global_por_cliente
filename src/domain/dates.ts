@@ -39,3 +39,12 @@ export function cutoff(reference: string, year: string, month: string): string {
     .slice(0, 10);
   return end < reference ? end : reference;
 }
+
+/** Dia civil brasileiro; não depende do fuso do navegador ou servidor. */
+export function currentDate(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(now);
+  const part = (type: string) => parts.find(value => value.type === type)!.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}

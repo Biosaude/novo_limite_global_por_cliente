@@ -6,7 +6,7 @@ Dashboard financeiro em React, TypeScript e Vite. A primeira etapa funciona inte
 
 1. Abra o site disponibilizado pelo responsável pelo projeto. Nesta entrega, o código segue em branch para revisão via PR; atualizar a aplicação na Vercel é uma ação separada do responsável.
 2. Acesse **Gerenciar Base**. Use **Baixar Modelo da Base** caso precise da estrutura oficial vazia ou clique em **Selecionar Nova Base** para escolher o arquivo `.xlsx`.
-3. Informe a data da extração. `19/10/2026` é a referência histórica inicial, não a data atual automática.
+3. Informe a data da extração. O campo sugere a posição ativa ou a data civil brasileira atual; confirme a referência correta. Para a base histórica fornecida, informe `19/10/2026`. A data fica fixa na posição confirmada.
 4. Confira todas as abas, a linha do cabeçalho e as colunas. Para A Vencer e Vencidos (inadimplência), mapeie **saldo em aberto**; para Recebido, **valor efetivamente recebido** e **data de recebimento**. Não use o valor nominal da duplicata.
 5. A prévia é calculada automaticamente quando as abas e colunas são reconhecidas. Confira quantidade de registros, valores e ocorrências. Se ajustar o mapeamento ou a referência, clique em **Validar estrutura e calcular totais** para gerar uma nova prévia.
 6. Marque a confirmação da conferência na prévia e clique em **Atualizar Dashboard**, nos três controles principais. O botão permanece desabilitado sem uma base validada e confirmada. Erros de valores ou de datas essenciais de recebimento bloqueiam a aplicação. Advertências não excluem registros nem bloqueiam o dashboard.
@@ -14,7 +14,7 @@ Dashboard financeiro em React, TypeScript e Vite. A primeira etapa funciona inte
 
 A base anterior permanece ativa enquanto um novo arquivo é processado, se houver erros ou enquanto não houver confirmação explícita da substituição. Abas desconhecidas exigem categoria definida; não são ignoradas automaticamente. Cabeçalhos repetidos continuam distinguíveis pelo número da coluna. Linhas vazias e conteúdo anterior ao cabeçalho ficam preservados na origem, com suas contagens na conferência, sem entrar como títulos financeiros.
 
-O sistema aceita `.xlsx` sem senha, até 20 MB, até 100.000 linhas de dados e 256 colunas por aba, 2 milhões de células no total e 150 MB descompactados. Arquivos ilegíveis, sem registros ou acima dos limites são rejeitados; não há truncamento silencioso. Não há execução nem recálculo de fórmulas: utiliza-se o resultado salvo no Excel. Resultados zero de fórmulas compartilhadas são recuperados do OOXML original para contornar uma omissão do ExcelJS.
+O sistema aceita `.xlsx` sem senha, até 20 MB, até 100.000 linhas de dados e 256 colunas por aba, 2 milhões de células no total e 150 MB descompactados. Arquivos ilegíveis, sem registros ou acima dos limites são rejeitados; não há truncamento silencioso. Não há execução genérica de fórmulas. Nas colunas de dias, `vencimento − TODAY()/HOJE()` (A Vencer) e `TODAY()/HOJE() − vencimento` (Vencidos) são reconhecidas e os dias são calculados pelas datas da posição, mesmo sem cache. Expressões incompatíveis e referências incorretas são advertidas. Valores financeiros e datas continuam usando resultados salvos válidos. Zeros verdadeiros de fórmulas compartilhadas são recuperados do OOXML; cache vazio não é convertido em zero.
 
 ## Interface e modelo Excel
 
@@ -24,7 +24,7 @@ O rótulo **Vencidos (inadimplência)** é compartilhado entre cards, filtros, r
 
 O cabeçalho exibe o exercício selecionado (**FY**), a data e o horário da última aplicação da base (fuso America/Sao_Paulo), a quantidade total de registros e o status. Essa atualização só é registrada quando **Atualizar Dashboard** termina com sucesso; gerar uma prévia ou registrar uma justificativa não altera a data de atualização da base.
 
-**Baixar Modelo da Base** gera um download real no navegador de `Modelo_Base_Limite_Global_Biosaude.xlsx`, sem dados e sem chamadas externas. São as três abas oficiais, com todos os cabeçalhos e as colunas financeiras distintas, inclusive os cabeçalhos `Descricao` repetidos da origem. Preencha registros reais antes de importar; o modelo vazio não constitui uma base financeira válida. Não há indicadores de demonstração no produto.
+**Baixar Modelo da Base** gera um download real no navegador de `Modelo_Base_Limite_Global_Biosaude.xlsx`, sem dados e sem chamadas externas. São as três abas oficiais, com todos os cabeçalhos e as colunas financeiras distintas, inclusive os cabeçalhos `Descricao` repetidos da origem. F2 das duas primeiras abas inclui as fórmulas oficiais `E2-TODAY()` e `TODAY()-E2`; copie-as para as demais linhas. A linha só com fórmula de orientação não é um registro financeiro. Preencha registros reais antes de importar; o modelo sem dados não constitui uma base financeira válida. Não há indicadores de demonstração no produto.
 
 As capturas abaixo usam exclusivamente **ARQUIVO_DE_TESTE_VISUAL.xlsx**, gerado pelas fixtures de testes. Os valores e nomes exibidos nelas são sintéticos e **não são resultados oficiais**. As imagens permitem inspeção visual no GitHub antes de atualizar a Vercel; não representam uma aplicação já implantada.
 
@@ -138,3 +138,7 @@ Sem essa variável, os testes com o arquivo oficial são marcados como ignorados
 A comparação independente de crédito pode ser repetida com `python scripts/validate_credit_reference.py /caminho/privado/base.xlsx` (Python e openpyxl são necessários apenas para esse teste de desenvolvimento). O relatório detalhado usa hashes dos nomes e não deve ser publicado com dados privados.
 
 A integração ao Neon, a administração autenticada e a publicação de bases para visitantes pertencem às etapas seguintes e exigem autorização própria. Esta aplicação não oferece segurança de acesso baseada em controles do frontend.
+
+## Fórmulas de vencimento e auditoria
+
+[Regras, contagem dos alertas, validação financeira e passos para importar](docs/VALIDACAO_FORMULAS_VENCIMENTO.md). As bases locais antigas têm somente a análise dos dias reavaliada em memória, sem migração ou mudança da referência histórica.

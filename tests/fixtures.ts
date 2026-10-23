@@ -24,7 +24,7 @@ export async function fixture(
         ? "valor inválido"
         : 100.1,
     new Date("2026-10-29T00:00:00Z"),
-    -10,
+    10,
   ]);
   const overdue = wb.addWorksheet("Vencido");
   overdue.addRow([
