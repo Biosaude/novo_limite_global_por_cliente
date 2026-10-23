@@ -11,6 +11,7 @@ async function stage(
   variant: Parameters<typeof fixture>[0] = "normal",
 ) {
   await manage(page);
+  await page.getByLabel("Data de referência da posição").fill("2026-10-19");
   await page.getByLabel("Selecionar planilha Excel").setInputFiles({
     name: "ARQUIVO_DE_TESTE.xlsx",
     mimeType:
@@ -240,6 +241,7 @@ test("planilha oficial no navegador: importação, totais reais, advertências e
   });
   await page.goto("/");
   await manage(page);
+  await page.getByLabel("Data de referência da posição").fill("2026-10-19");
   await page
     .getByLabel("Selecionar planilha Excel")
     .setInputFiles(process.env.BIOSAUDE_TEST_WORKBOOK!);
@@ -358,7 +360,8 @@ test("modelo baixável: download real, planilha vazia compatível e controles al
   await workbook.xlsx.load(Uint8Array.from(await readFile(output)).buffer);
   expect(workbook.worksheets).toHaveLength(3);
   for (const sheet of workbook.worksheets) {
-    expect(sheet.actualRowCount).toBe(1);
+    expect(sheet.actualRowCount).toBe(sheet.name.includes("RECEBIDO") ? 1 : 2);
+    if (!sheet.name.includes("RECEBIDO")) expect(sheet.getCell("F2").formula).toBe(sheet.name.includes("A VENCER") ? "E2-TODAY()" : "TODAY()-E2");
     expect(sheet.getRow(1).getCell(1).value).toBe("Nome cliente");
     const headers = sheet.getRow(1).values as unknown[];
     expect(headers).toContain(

@@ -53,11 +53,19 @@ export function audit(records: FinancialRecord[], reference: string): Issue[] {
           "category_date",
           `Categoria divergente do vencimento: ${days} dias em relação à referência. A categoria original foi mantida.`,
         );
-      if (record.reportedDays !== null && record.reportedDays !== days)
+      const expected = record.category === "upcoming" ? -days : days;
+      const calculation = record.dayCalculation;
+      const recognized = calculation?.kind === "formula";
+      const inconsistent = recognized
+        ? calculation.reference !== reference || calculation.days !== expected
+        : calculation?.kind !== "invalid-formula" && record.reportedDays !== null && record.reportedDays !== expected;
+      if (inconsistent)
         add(
           record,
           "days",
-          `Dias informados: ${record.reportedDays}; calculados (referência − vencimento): ${days}; diferença: ${record.reportedDays - days}. O valor original foi mantido.`,
+          recognized
+            ? `Dias recalculados inconsistentes com a referência efetivamente utilizada (${reference}); conferir a integridade dos dados.`
+            : `Dias informados: ${record.reportedDays}; calculados (${record.category === "upcoming" ? "vencimento − referência" : "referência − vencimento"}): ${expected}; diferença: ${record.reportedDays! - expected}. O valor original foi mantido.`,
         );
     }
     if (record.title.trim() && record.client.trim()) {

@@ -145,6 +145,12 @@ export function DetailDialog({
             valores. Datas do Excel são representadas em ISO. Fórmulas e seus
             resultados salvos são exibidos integralmente.
           </p>
+          {selected?.dayCalculation && <p className="helper">
+            Dias originais/cache: {selected.reportedDays ?? "não informado"}. Dias recalculados: {selected.dayCalculation.days ?? "indeterminados"}.
+            Referência única: {displayDate(selected.dayCalculation.reference)}.
+            {selected.dayCalculation.formula && ` Fórmula reconhecida: ${selected.dayCalculation.formula}.`}
+            {" "}A Vencer usa vencimento − referência; Vencidos usa referência − vencimento.
+          </p>}
           <dl>
             {row.cells.map((value, index) => (
               <div key={index}>

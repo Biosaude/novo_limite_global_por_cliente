@@ -58,6 +58,7 @@ export function formulaCache(
       )) {
         if (cell.f === undefined || cell.v === undefined) continue;
         const text = String(cell.v);
+        if (text.trim() === "") continue; // Cache vazio não é resultado numérico zero.
         const type = cell["@_t"];
         const value: RawCell =
           type === "str"

@@ -1,3 +1,4 @@
+import { refreshDayAnalysis } from "../importacao/dayAnalysis";
 import type { Dataset } from "../domain/types";
 import type { PolicyProposal } from "../credito/types";
 export interface DatasetRepository {
@@ -71,7 +72,7 @@ function valid(dataset: Dataset | undefined): Dataset | null {
     !Array.isArray(dataset.issues)
   )
     throw new Error("A base local não é compatível. Reimporte a planilha.");
-  return dataset;
+  return refreshDayAnalysis(dataset);
 }
 export const localRepository: DatasetRepository = {
   async load() {

@@ -18,7 +18,7 @@ import {
 } from "../importacao/mapping";
 import { normalize } from "../importacao/normalize";
 import { totals, selectRecords, initialFilters } from "../domain/finance";
-import { displayDate } from "../domain/dates";
+import { displayDate, currentDate } from "../domain/dates";
 import { money } from "../domain/money";
 import { AuditTable } from "./AuditTable";
 
@@ -36,7 +36,7 @@ export function ImportManager({
   const [source, setSource] = useState<SourceWorkbook | null>(null);
   const [mappings, setMappings] = useState<Mapping[]>([]);
   const [filename, setFilename] = useState("");
-  const [reference, setReference] = useState("2026-10-19");
+  const [reference, setReference] = useState(active?.reference ?? currentDate());
   const [candidate, setCandidate] = useState<Dataset | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [remember, setRemember] = useState(false);
@@ -315,8 +315,8 @@ export function ImportManager({
             />
           </label>
           <p className="helper">
-            19/10/2026 é a referência histórica. Para uma nova extração, informe
-            sua data. A data atual não é aplicada automaticamente.
+            Informe a data da extração. A referência sugerida só é aplicada após
+            validação e confirmação; posições históricas mantêm sua própria data.
           </p>
         </article>
         <article className="panel">
@@ -542,7 +542,7 @@ export function ImportManager({
             </div>
           )}
           <p className="helper">
-            Referência {displayDate(reference)}. Recebido YTD: 01/01/
+            Referência {displayDate(reference)} para fórmulas e aging, sem atualização automática para hoje. Recebido YTD: 01/01/
             {reference.slice(0, 4)} até {displayDate(reference)}. Advertências
             não removem registros e não impedem a visualização dos totais
             válidos.

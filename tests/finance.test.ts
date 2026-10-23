@@ -227,7 +227,7 @@ test(
       2354,
     );
     assert.equal(
-      data.issues.filter((issue) => issue.code === "days").length,
+      data.issues.filter((issue) => issue.code === "invalid_days_formula").length,
       2348,
     );
     assert.equal(
@@ -294,8 +294,8 @@ test("modelo Excel vazio conserva o esquema oficial e aceita preenchimento pelo 
   for (const [index, sheet] of workbook.worksheets.entries()) {
     assert.equal(
       sheet.actualRowCount,
-      1,
-      "modelo não deve conter registros simulados",
+      index === 2 ? 1 : 2,
+      "modelo não deve conter registros simulados; F2 é orientação",
     );
     const values = sheet.getRow(1).values as unknown[];
     const row = Array(sheet.columnCount).fill(null);

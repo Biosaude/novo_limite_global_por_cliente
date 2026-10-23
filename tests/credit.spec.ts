@@ -247,6 +247,7 @@ test("crédito na planilha oficial: 169 clientes e exposição conciliada no nav
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   await manage(page);
+  await page.getByLabel("Data de referência da posição").fill("2026-10-19");
   await page
     .getByLabel("Selecionar planilha Excel")
     .setInputFiles(process.env.BIOSAUDE_TEST_WORKBOOK!);

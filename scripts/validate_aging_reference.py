@@ -5,7 +5,7 @@ import sys, json, datetime, hashlib
 from collections import defaultdict
 from decimal import Decimal
 import openpyxl
-reference = datetime.date(2026, 10, 19)
+reference = datetime.date.fromisoformat(sys.argv[2]) if len(sys.argv) > 2 else datetime.date(2026, 10, 19)
 groups = defaultdict(list)
 for sheet in openpyxl.load_workbook(sys.argv[1], data_only=True):
     rows = iter(sheet.values)
@@ -26,7 +26,7 @@ for sheet in openpyxl.load_workbook(sys.argv[1], data_only=True):
             groups[kind + ':' + hashlib.sha256(name.strip().encode()).hexdigest()].append(record)
 
 def calculate(rows):
-    totals = {k: sum(r[1] for r in rows if r[0] == k and (k != 'received' or r[3] and datetime.date(2026,1,1) <= r[3] <= reference)) for k in ['upcoming', 'overdue', 'received']}
+    totals = {k: sum(r[1] for r in rows if r[0] == k and (k != 'received' or r[3] and datetime.date(reference.year,1,1) <= r[3] <= reference)) for k in ['upcoming', 'overdue', 'received']}
     bands = [0] * 7
     numerator = Decimal(0)
     denominator = 0

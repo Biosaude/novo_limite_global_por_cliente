@@ -28,16 +28,16 @@ Os totais também foram conferidos independentemente com openpyxl e Decimal em P
 
 ## Auditoria do arquivo
 
-- 2.348 diferenças entre dias informados e `referência − vencimento`.
+- 2.348 fórmulas antigas de dias incompatíveis com a regra oficial nova (`IF(TODAY() > D…, TODAY() - E…, 0)`). Na cópia de teste com as novas subtrações reconhecidas sem cache, esses alertas não ocorrem.
 - 5 divergências entre categoria A Vencer e data de vencimento.
 - 1 ocorrência por sobreposição de cliente e título entre A Vencer e Recebido, abrangendo os dois registros de `87848/01`.
 - Total: **2.354 advertências, zero erros bloqueantes**. Todos os 5.099 registros são preservados.
 
-O cache OOXML contém 13 resultados zero de fórmulas compartilhadas omitidos pela leitura padrão do ExcelJS. O importador recupera o cache original; não calcula ou altera fórmulas. Há teste de regressão específico para esse caso, inclusive com nome de aba contendo entidade XML.
+O cache OOXML contém 13 resultados zero de fórmulas compartilhadas omitidos pela leitura padrão do ExcelJS. O importador recupera o cache original; não altera as fórmulas originais. Somente as duas subtrações oficiais de dias são reconhecidas e calculadas pelas datas da posição; fórmulas monetárias e de datas continuam usando cache válido. Há teste de regressão específico para esse caso, inclusive com nome de aba contendo entidade XML.
 
 ## Escopo dos testes
 
-Resultado da execução com o arquivo oficial: **27 testes de serviços aprovados; 56 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
+Resultado da execução com o arquivo oficial: **42 testes de serviços aprovados; 72 testes de navegador aprovados; nenhum teste ignorado ou falho.** A compilação TypeScript/Vite também passou.
 
 Testes de serviços: centavos e formatos monetários, overflow, datas civis, leitura de Excel, campos originais, YTD, filtros, agrupamentos, faixas de atraso, séries mensais, arquivos inválidos, mapeamento reordenado, campos ausentes, cache de fórmulas e conciliação integral da base oficial.
 
@@ -55,7 +55,7 @@ O teste de **Baixar Modelo da Base** aguarda o evento de download, salva o arqui
 
 O teste do cabeçalho usa um relógio controlado: a base é lida em um horário e aplicada em outro. Confere que a última atualização registra o horário da aplicação em America/Sao_Paulo, além dos registros e do status. O FY responde ao filtro de ano. Nenhum desses horários controlados alimenta o produto.
 
-As capturas em `docs/preview-*.png` usam somente o arquivo sintético `ARQUIVO_DE_TESTE_VISUAL.xlsx`. Não contêm a planilha oficial, pacientes ou dados financeiros reais. A validação da **nova planilha atualizada** continua pendente de seu fornecimento; os resultados reais já conferidos são apenas os da base histórica de 19/10/2026.
+As capturas em `docs/preview-*.png` usam somente o arquivo sintético `ARQUIVO_DE_TESTE_VISUAL.xlsx`. Não contêm a planilha oficial, pacientes ou dados financeiros reais. A nova planilha `Modelo_Base_Limite_Global_Biosaude.xlsx` também foi recebida e validada: 5.212 registros, referência 23/10/2026, 11 advertências legítimas de `+1` nas fórmulas F2:F12 de A Vencer, zero erros bloqueantes. Os totais e o aging novos estão no relatório de fórmulas de vencimento.
 
 ## Painel sem menu lateral e rótulo de inadimplência
 
@@ -76,3 +76,7 @@ Esses testes demonstram funcionamento no navegador automatizado da máquina de d
 ## Ajustes de exposição e aging
 
 [Conferência independente, fórmulas, comparativo e capturas](docs/VALIDACAO_AGING.md).
+
+## Correção das fórmulas de dias
+
+[Regras antigas/novas, conciliação da nova planilha de 23/10/2026, alertas preservados e instruções](docs/VALIDACAO_FORMULAS_VENCIMENTO.md).

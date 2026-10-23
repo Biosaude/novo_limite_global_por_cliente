@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-/** Estrutura conferida na planilha oficial; modelo vazio, sem registros financeiros. */
+/** Estrutura oficial sem registros financeiros; F2 orienta o preenchimento dos dias. */
 export const templateSheets = [
   {
     name: "CONSOLIDADO - A VENCER (VA529)",
@@ -73,6 +73,7 @@ export const templateSheets = [
 export async function createTemplate(): Promise<ArrayBuffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "BIOSAÚDE";
+  workbook.calcProperties.fullCalcOnLoad = true;
   workbook.title = "Modelo da Base — Limite Global por Cliente";
   for (const definition of templateSheets) {
     const sheet = workbook.addWorksheet(definition.name, {
@@ -80,6 +81,12 @@ export async function createTemplate(): Promise<ArrayBuffer> {
       views: [{ state: "frozen", ySplit: 1 }],
     });
     sheet.addRow(definition.headers);
+    if (!definition.name.includes("RECEBIDO")) {
+      sheet.getCell("F2").value = { formula: definition.name.includes("A VENCER") ? "E2-TODAY()" : "TODAY()-E2" };
+      sheet.getCell("F2").numFmt = "0";
+      sheet.getCell("F2").note = "Fórmula oficial. Preencha o vencimento em E2 e copie a fórmula para as demais linhas. No dashboard os dias usam a data de referência confirmada da posição; o cache de HOJE() não altera uma posição histórica.";
+    }
+
     sheet.getRow(1).height = 36;
     sheet.getRow(1).eachCell((cell) => {
       cell.font = { name: "Calibri", bold: true, color: { argb: "FFFFFFFF" } };

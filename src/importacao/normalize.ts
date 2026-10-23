@@ -9,6 +9,8 @@ import {
 import { scalar, cellText, blank } from "./mapping";
 import { dateValue, validDate } from "../domain/dates";
 import { cents, sum } from "../domain/money";
+import { analyzeDayCell } from "./dayAnalysis";
+import { isDaysFormulaGuide } from "./daysFormula";
 import { audit } from "../auditoria/audit";
 export function normalize(
   source: SourceWorkbook,
@@ -45,7 +47,7 @@ export function normalize(
         `Uma coluna está mapeada para dois campos na aba “${sheet.name}”. Confira o mapeamento.`,
       );
     const rows = sheet.rows.filter(
-      (row) => row.number > map.header && !blank(row),
+      (row) => row.number > map.header && !blank(row) && !isDaysFormulaGuide(row, sheet, map),
     );
     if (!rows.length)
       throw new Error(
@@ -78,22 +80,9 @@ export function normalize(
           "invalid_receipt_date",
           `Data de recebimento ausente ou inválida; impossível determinar o Recebido YTD. Valor original: ${cellText(row.cells[map.fields.received]) || "(ausente)"}. Valor financeiro: ${String(get("amount") ?? "(ausente)")}.`,
         );
-      const days = get("days");
-      const reportedDays =
-        days !== null &&
-        String(days).trim() !== "" &&
-        Number.isInteger(Number(days))
-          ? Number(days)
-          : null;
-      if (days !== null && String(days).trim() !== "" && reportedDays === null)
-        issues.push({
-          id: `${id}:invalid_days`,
-          code: "invalid_days",
-          severity: "warning",
-          records: [id],
-          message:
-            "Quantidade de dias inválida; atraso calculado com vencimento e referência.",
-        });
+      const due = dateValue(get("due"), source.date1904);
+      const dayAnalysis = analyzeDayCell(sheet, map, row, due, reference);
+      issues.push(...dayAnalysis.issues);
       records.push({
         id,
         sheet: sheet.name,
@@ -103,9 +92,10 @@ export function normalize(
         title: String(get("title") ?? "").trim(),
         representative: String(get("representative") ?? "").trim(),
         cents: amount,
-        due: dateValue(get("due"), source.date1904),
+        due,
         received,
-        reportedDays,
+        reportedDays: dayAnalysis.reportedDays,
+        ...(map.category !== "received" ? { dayCalculation: dayAnalysis.dayCalculation } : {}),
         issued: dateValue(get("issued"), source.date1904),
         document: String(get("document") ?? "").trim(),
         installment: String(get("installment") ?? "").trim(),
