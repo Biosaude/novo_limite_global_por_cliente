@@ -45,13 +45,6 @@ export function FinancialKpis({ records, summary, reference, loaded }: {
             </span>}
           </div>
         </article>)}
-    </section>
-    <p className="definition">
-      Exposição Financeira Total representa a dívida atual, não um limite de crédito aprovado.
-      Os saldos seguem as abas da posição importada; vencimento na data-base não é atraso.
-      Divergências de classificação são preservadas e sinalizadas na Auditoria.
-    </p>
-    <section className="aging-kpi-row" aria-label="Idade dos saldos vencidos">
       <article className="kpi aging-average">
         <div className="kpi-label">Aging Médio dos Vencidos<span><Clock3 size={19} /></span></div>
         <div className="kpi-value" aria-label="Aging Médio dos Vencidos">
@@ -63,5 +56,10 @@ export function FinancialKpis({ records, summary, reference, loaded }: {
         {aging.excludedCount > 0 && <p role="status" className="aging-data-warning">Média indisponível: {aging.excludedCount} registros com saldo inválido/negativo, sem vencimento ou sem atraso positivo. Confira a Auditoria; uma média parcial não foi publicada.</p>}
       </article>
     </section>
+    <p className="definition">
+      Exposição Financeira Total representa a dívida atual, não um limite de crédito aprovado.
+      Os saldos seguem as abas da posição importada; vencimento na data-base não é atraso.
+      Divergências de classificação são preservadas e sinalizadas na Auditoria.
+    </p>
   </>;
 }
