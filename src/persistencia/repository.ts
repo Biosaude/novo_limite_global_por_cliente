@@ -1,12 +1,8 @@
 import { refreshDayAnalysis } from "../importacao/dayAnalysis";
 import type { Dataset } from "../domain/types";
 import type { PolicyProposal } from "../credito/types";
-export interface DatasetRepository {
-  load(): Promise<Dataset | null>;
-  save(dataset: Dataset): Promise<void>;
-  clear(): Promise<void>;
-  history(): Promise<Dataset[]>;
-}
+import type {DatasetRepository,ProposalRepository} from "./contracts";
+export type {DatasetRepository,ProposalRepository} from "./contracts";
 async function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("biosaude-financeiro", 2);
@@ -127,7 +123,7 @@ export const localRepository: DatasetRepository = {
     });
   },
 };
-export const proposalRepository = {
+export const proposalRepository: ProposalRepository = {
   async list(): Promise<PolicyProposal[]> {
     return transaction(["credit-proposals"], "readonly", (tx) => {
       const req = tx.objectStore("credit-proposals").getAll();

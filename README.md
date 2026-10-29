@@ -1,6 +1,6 @@
 # BIOSAÚDE — Limite Global por Cliente
 
-Dashboard financeiro em React, TypeScript e Vite. A primeira etapa funciona integralmente no navegador: importação Excel, conferência, indicadores, gráficos, filtros, detalhamento e auditoria. Não há conexão ao Neon, autenticação administrativa ou backend de dados.
+Dashboard financeiro em React, TypeScript e Vite. A primeira etapa funciona integralmente no navegador: importação Excel, conferência, indicadores, gráficos, filtros, detalhamento e auditoria. A persistência remota não está ativada. A Etapa 1 prepara uma camada de servidor e esquema PostgreSQL, sem API financeira pública ou autenticação administrativa simulada.
 
 ## Utilização
 
@@ -101,7 +101,7 @@ npm run build
 npm run preview
 ```
 
-O build gera `dist/`. Na Vercel, o projeto usa o preset Vite, `npm run build` e saída `dist`. Não configure variáveis do Neon nem credenciais para esta etapa. Depois da atualização na Vercel, importe o Excel no seu próprio navegador; a aplicação publicada começa sem uma base financeira embutida.
+O build gera `dist/`. Na Vercel, o projeto usa o preset Vite, `npm run build` e saída `dist`. A variável `DATABASE_URL` pertence exclusivamente ao servidor e não ativa a persistência por si só; consulte a preparação Neon abaixo. Depois da atualização na Vercel, importe o Excel no seu próprio navegador; a aplicação publicada começa sem uma base financeira embutida.
 
 ## Testes
 
@@ -138,7 +138,7 @@ Sem essa variável, os testes com o arquivo oficial são marcados como ignorados
 
 A comparação independente de crédito pode ser repetida com `python scripts/validate_credit_reference.py /caminho/privado/base.xlsx` (Python e openpyxl são necessários apenas para esse teste de desenvolvimento). O relatório detalhado usa hashes dos nomes e não deve ser publicado com dados privados.
 
-A integração ao Neon, a administração autenticada e a publicação de bases para visitantes pertencem às etapas seguintes e exigem autorização própria. Esta aplicação não oferece segurança de acesso baseada em controles do frontend.
+A ativação da integração ao Neon, a administração autenticada e a publicação de bases para visitantes pertencem às etapas seguintes e exigem autorização própria. Esta aplicação não oferece segurança de acesso baseada em controles do frontend.
 
 ## Fórmulas de vencimento e auditoria
 
@@ -169,3 +169,14 @@ O novo painel usa os valores efetivamente recebidos e a data real do recebimento
 Ajuizamento é complementar às categorias de prazo. Sem coluna confiável, mostra **Dados indisponíveis**, sem presumir ação judicial por atraso e sem acrescentar o subconjunto novamente ao total. A planilha atual não possui essa informação. Pagamentos parciais não são deduplicados nem tratados como quitação integral.
 
 [Metodologia, resultados reais, testes, arquivos e capturas](docs/ANALISE_RECEBIMENTOS.md).
+
+## Preparação Neon PostgreSQL — Etapa 1
+
+Backend exclusivo do servidor, driver Neon preguiçoso, `.env.example` sem credenciais, migrações SQL versionadas e adaptadores dos contratos existentes foram preparados. **IndexedDB continua ativo.** Definir `DATABASE_URL` não conecta automaticamente, não aplica DDL e não publica dados. A única rota nova é de saúde técnica; os repositórios do servidor negam acesso por padrão até a implementação de autenticação/autorização.
+
+- `npm run db:check`: verifica configuração e TLS, sem conexão e sem imprimir valores.
+- `npm run db:plan`: lista migrações e hashes, sem execução.
+- `npm run typecheck`: verifica frontend e servidor.
+- `npm test`: inclui PostgreSQL temporário em memória, sem acesso ao Neon.
+
+Não há comando de migração automática. [Arquitetura, esquema, segurança, limites, testes e próximas etapas](docs/NEON_ETAPA_1.md).
