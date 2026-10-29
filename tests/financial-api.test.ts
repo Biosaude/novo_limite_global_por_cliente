@@ -647,3 +647,211 @@ test("provisionamento: papel sem login é separado do runtime e alterações de 
   assert.equal(role.rows[0].rolcanlogin, false);
   assert.equal(role.rows[0].rolbypassrls, false);
 });
+
+test("auditoria PR13: proposta com critérios de risco ausentes é rejeitada sem persistência", async () => {
+  const s = await seed("invalid-policy");
+  const config = structuredClone(proposedConfig);
+  config.rules = { Moderado: {}, Alto: {}, Crítico: {} } as typeof config.rules;
+  const partial = structuredClone(proposedConfig);
+  delete (partial.rules.Alto as Partial<typeof partial.rules.Alto>).delayDays;
+  const extra = structuredClone(proposedConfig);
+  Object.assign(extra.rules.Moderado, { approved: true });
+  for (const malformed of [config, partial, extra]) {
+    const response = await s.request(
+      "proposals",
+      "POST",
+      {
+        id: crypto.randomUUID(),
+        version: 1,
+        createdAt: new Date().toISOString(),
+        reason: "Política sintética incompleta",
+        config: malformed,
+        status: "draft",
+      },
+      0,
+    );
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.data.code, "PROPOSAL_INVALID");
+  }
+  const list = await s.request("proposals");
+  assert.equal(list.data.proposals.length, 0);
+  assert.equal(list.headers.ETag, '"0"');
+});
+
+test("auditoria PR13: dados, versões e mutações de outra organização permanecem inacessíveis", async () => {
+  const a = await seed("audit-alice"),
+    b = await seed("audit-bob");
+  const imported = await b.request("imports", "POST", input(), 0);
+  assert.equal(imported.statusCode, 201);
+  const id = imported.data.versionId;
+  assert.equal((await a.request("version?versionId=" + id)).statusCode, 404);
+  assert.equal(
+    (await a.request("active", "PUT", { versionId: id }, 0)).statusCode,
+    404,
+  );
+  assert.equal(
+    (
+      await a.request(
+        "reviews",
+        "PATCH",
+        { versionId: id, reviews: { test: "Tentativa sintética" } },
+        0,
+      )
+    ).statusCode,
+    404,
+  );
+  assert.equal(
+    (
+      await a.request("active", "GET", undefined, undefined, {
+        "x-workspace-id": b.workspace,
+      })
+    ).statusCode,
+    403,
+  );
+  const own = await a.request("active");
+  assert.equal(own.data.dataset, null);
+  assert.equal(own.headers.ETag, '"0"');
+  assert.equal((await a.request("versions")).data.versions.length, 0);
+  const unchanged = await b.request("active");
+  assert.equal(unchanged.data.dataset.id, id);
+  assert.deepEqual(unchanged.data.dataset.reviews, {});
+  assert.equal(unchanged.headers.ETag, '"1"');
+  const [rows] = await db.transaction(a.workspace, [
+    {
+      text: "SELECT * FROM biosaude.financial_records WHERE version_id=$1",
+      values: [id],
+    },
+  ]);
+  assert.equal(rows.length, 0); // Consulta sem filtro de workspace continua protegida por RLS.
+});
+
+test("auditoria PR13: If-Match forte e inteiro seguro é obrigatório; precondições inválidas não escrevem", async () => {
+  const s = await seed("audit-etag");
+  for (const header of [
+    "*",
+    'W/"0"',
+    '"0", "1"',
+    '"9007199254740992"',
+    "0",
+    '"-1"',
+  ]) {
+    const result = await s.request("imports", "POST", input(), undefined, {
+      "if-match": header,
+    });
+    assert.equal(result.statusCode, 428);
+    assert.equal(result.data.code, "PRECONDITION_REQUIRED");
+  }
+  assert.equal((await s.request("versions")).data.versions.length, 0);
+  assert.equal((await s.request("active")).headers.ETag, '"0"');
+});
+
+test("auditoria PR13: todas as tabelas de negócio têm RLS forçado e o runtime não herda provisionamento", async () => {
+  const tables = await pg.query<{
+    relname: string;
+    relrowsecurity: boolean;
+    relforcerowsecurity: boolean;
+  }>(
+    "SELECT relname,relrowsecurity,relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='biosaude' AND c.relkind='r' AND c.relname<>'schema_migrations'",
+  );
+  assert.ok(tables.rows.length >= 20);
+  assert.ok(
+    tables.rows.every((t) => t.relrowsecurity && t.relforcerowsecurity),
+  );
+  const roles = await pg.query<{
+    rolname: string;
+    rolsuper: boolean;
+    rolbypassrls: boolean;
+    rolcanlogin: boolean;
+  }>(
+    "SELECT rolname,rolsuper,rolbypassrls,rolcanlogin FROM pg_roles WHERE rolname IN ('api_test','biosaude_membership_admin')",
+  );
+  assert.equal(roles.rows.length, 2);
+  assert.ok(
+    roles.rows.every((r) => !r.rolsuper && !r.rolbypassrls && !r.rolcanlogin),
+  );
+  const membership = await pg.query<{ member: boolean }>(
+    "SELECT pg_has_role('api_test','biosaude_membership_admin','MEMBER') AS member",
+  );
+  assert.equal(membership.rows[0].member, false);
+  const grants = await pg.query(
+    "SELECT proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a WHERE n.nspname='biosaude' AND proname IN ('require_permission','advance_revision','require_version') AND a.grantee=0 AND a.privilege_type='EXECUTE'",
+  );
+  assert.equal(grants.rows.length, 0);
+});
+
+test("auditoria PR13: bloqueio em Production e flag ausente ocorre antes de identidade e DATABASE_URL", async () => {
+  let calls = 0;
+  for (const flags of [
+    { VERCEL_ENV: "production", FINANCIAL_API_ENABLED: "true" },
+    { VERCEL_ENV: "preview" },
+    { VERCEL_ENV: "preview", FINANCIAL_API_ENABLED: "TRUE" },
+  ]) {
+    const env = new Proxy(flags, {
+      get(target, key) {
+        if (key === "DATABASE_URL") {
+          calls++;
+          throw Error("Não ler conexão");
+        }
+        return Reflect.get(target, key);
+      },
+    });
+    const handler = createFinancialHandler({
+      environment: env,
+      identity: {
+        async verify() {
+          calls++;
+          throw Error("Não autenticar em rota desligada");
+        },
+      },
+    });
+    const response = {
+      statusCode: 0,
+      setHeader() {},
+      end(body?: string) {
+        assert.equal(body, '{"code":"NOT_FOUND"}');
+      },
+    };
+    await handler(
+      {
+        method: "GET",
+        url: "/api/financial/active",
+        headers: {
+          authorization: "Bearer a.b.c",
+          "x-workspace-id": crypto.randomUUID(),
+          "x-vercel-env": "preview",
+        },
+      },
+      response,
+    );
+    assert.equal(response.statusCode, 404);
+  }
+  assert.equal(calls, 0);
+});
+
+test("auditoria PR13: JWT assinado não pode substituir JWKS, omitir iat ou usar subject vazio", async () => {
+  for (const [header, subject, issued] of [
+    [
+      {
+        alg: "RS256",
+        kid: "synthetic-key",
+        jku: "https://attacker.invalid/jwks",
+      },
+      "operator",
+      true,
+    ],
+    [{ alg: "RS256", kid: "synthetic-key" }, "operator", false],
+    [{ alg: "RS256", kid: "synthetic-key" }, "  ", true],
+  ] as const) {
+    let signed = new SignJWT({})
+      .setProtectedHeader(header)
+      .setSubject(subject)
+      .setIssuer(issuer)
+      .setAudience(audience)
+      .setExpirationTime("5m");
+    if (issued) signed = signed.setIssuedAt();
+    await assert.rejects(
+      verifier.verify("Bearer " + (await signed.sign(keys.privateKey))),
+      { code: "UNAUTHENTICATED" },
+    );
+  }
+});

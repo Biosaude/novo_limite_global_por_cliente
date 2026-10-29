@@ -97,10 +97,10 @@ O adaptador de propostas também passou a conservar milissegundos quando o drive
 
 ## Testes executados
 
-- **14 testes novos** de identidade/API/PostgreSQL descartável aprovados, incluídos na suíte abaixo: assinaturas RSA reais com chaves exclusivamente sintéticas; rejeição de assinatura, emissor, audience, algoritmo, ausência de expiração, expiração e nbf indevidos; API desabilitada/Production; acesso HTTP; isolamento entre organizações; permissões; revogação antes da gravação; importação/validação; centavos e categorias; histórico e revisão; conflito de dois escritores; rollback; propostas somente em rascunho; papel administrativo sem login e auditoria de provisionamento.
-- **96 testes de serviços aprovados; 8 ignorados**, todos os ignorados dependem das planilhas reais externas.
+- **20 testes de identidade/API/PostgreSQL descartável aprovados**, incluídos na suíte abaixo: assinaturas RSA reais com chaves exclusivamente sintéticas; rejeição de assinatura, emissor, audience, algoritmo, ausência de expiração, expiração e nbf indevidos; API desabilitada/Production; acesso HTTP; isolamento entre organizações; permissões; revogação antes da gravação; importação/validação; centavos e categorias; histórico e revisão; conflito de dois escritores; rollback; propostas somente em rascunho; papel administrativo sem login e auditoria de provisionamento.
+- **102 testes de serviços aprovados; 8 ignorados**, todos os ignorados dependem das planilhas reais externas.
 - **84 testes de navegador aprovados; 24 ignorados**, os ignorados dependem de dados reais. Regressão em desktop, notebook, tablet e celular, com IndexedDB e somente fixtures sintéticas.
-- **180 testes distintos aprovados**. Os 14 novos foram executados isoladamente e na suíte completa, sem contagem duplicada.
+- **186 testes distintos aprovados**. Os 20 de API foram executados isoladamente e na suíte completa, sem contagem duplicada.
 - Typecheck de frontend/servidor e build com inspeção do bundle público aprovados. O build mantém o aviso preexistente de chunks grandes.
 
 Comandos executados sem as variáveis de planilhas reais:
@@ -136,3 +136,6 @@ env -u BIOSAUDE_TEST_WORKBOOK -u BIOSAUDE_UPDATED_WORKBOOK \
 - `.env.example`, `package.json`, `package-lock.json`: nomes de configuração, dependência `jose` e comando de testes; nenhuma credencial.
 - `tests/financial-api.test.ts`, `tests/neon-config.test.ts`: testes novos e expectativa atualizada das três migrações.
 - `README.md`, este documento: operação, evidências e pendências.
+
+
+A [auditoria final da PR #13](PR13_AUDITORIA_FINAL.md) reproduziu e corrigiu a aceitação de rascunhos de política com critérios ausentes. O servidor agora exige a estrutura completa antes de reutilizar a validação numérica existente, por `server/persistence/proposal-codec.ts`. O relatório detalha os seis testes adicionais, os resultados finais e a aprovação técnica somente para merge com integração desativada.
