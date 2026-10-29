@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2022"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "server/**/*.ts",
+    "api/**/*.ts",
+    "scripts/check-database.ts",
+    "scripts/migration-plan.ts",
+    "scripts/check-client-bundle.ts"
+  ]
+}
