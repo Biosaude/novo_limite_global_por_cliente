@@ -180,3 +180,11 @@ Backend exclusivo do servidor, driver Neon preguiçoso, `.env.example` sem crede
 - `npm test`: inclui PostgreSQL temporário em memória, sem acesso ao Neon.
 
 Não há comando de migração automática. [Arquitetura, esquema, segurança, limites, testes e próximas etapas](docs/NEON_ETAPA_1.md).
+
+## Diagnóstico seguro do Neon — Etapa 2
+
+A rota privada `POST /api/diagnostics/neon` permite somente `SELECT 1` em transação READ ONLY, apenas em Preview/Development e com chave temporária de operador. Production é bloqueada, `/api/health` não muda e o diagnóstico não ativa persistência financeira.
+
+Configure `NEON_DIAGNOSTIC_TOKEN` somente no servidor Preview/Development e no cliente operador. `npm run db:diagnostic-key` cria um arquivo privado sem imprimir a chave; `npm run db:probe:preview -- https://seu-preview.vercel.app` testa o Preview autorizado sem precisar da URL do banco no computador do operador. Nenhum segredo deve ser enviado por chat ou aparecer nos argumentos/logs.
+
+[Passo a passo, proteção Vercel, respostas, testes e situação da consulta real](docs/NEON_ETAPA_2.md). Uma resposta de configuração/health ou um teste simulado não confirma conexão real.

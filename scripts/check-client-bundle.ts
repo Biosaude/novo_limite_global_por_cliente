@@ -11,7 +11,11 @@ export async function inspectClientBundle(
       if (entry.isDirectory()) await scan(file);
       else if (/\.(js|html|json|map)$/.test(entry.name)) {
         const body = await readFile(file, "utf8");
-        if (/DATABASE_URL|@neondatabase|postgres(?:ql)?:\/\//i.test(body))
+        if (
+          /DATABASE_URL|NEON_DIAGNOSTIC_TOKEN|@neondatabase|postgres(?:ql)?:\/\//i.test(
+            body,
+          )
+        )
           invalid.push(relative(directory, file));
       } else if (entry.name.startsWith(".env"))
         invalid.push(relative(directory, file));

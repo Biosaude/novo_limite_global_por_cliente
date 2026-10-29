@@ -16,7 +16,10 @@
     "typecheck": "tsc --noEmit && tsc --project tsconfig.server.json --noEmit",
     "db:check": "node --env-file-if-exists=.env --import tsx scripts/check-database.ts",
     "db:plan": "tsx scripts/migration-plan.ts",
-    "check:client": "tsx scripts/check-client-bundle.ts"
+    "check:client": "tsx scripts/check-client-bundle.ts",
+    "test:connectivity": "tsx --test tests/neon-connectivity.test.ts",
+    "db:probe:preview": "node --env-file-if-exists=.env.neon-diagnostic --import tsx scripts/check-neon-preview.ts",
+    "db:diagnostic-key": "tsx scripts/diagnostic-key.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

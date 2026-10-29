@@ -71,3 +71,28 @@ export function createDatabase(
     },
   };
 }
+
+export const CONNECTIVITY_SQL = "SELECT 1 AS ok";
+export const CONNECTIVITY_TIMEOUT_MS = 5000;
+/** Sonda restrita: não recebe SQL, organização, dados ou parâmetros da requisição. */
+export async function checkReadOnlyConnectivity(
+  environment?: ServerEnvironment,
+): Promise<void> {
+  assertServerOnly();
+  const url = readDatabaseUrl(environment);
+  try {
+    const sql = neon(url);
+    const result = await sql.transaction([sql.query(CONNECTIVITY_SQL)], {
+      readOnly: true,
+      isolationLevel: "ReadCommitted",
+      fetchOptions: { signal: AbortSignal.timeout(CONNECTIVITY_TIMEOUT_MS) },
+    });
+    if (result.length !== 1 || result[0].length !== 1 || result[0][0]?.ok !== 1)
+      throw new Error();
+  } catch {
+    throw new ServerError(
+      "CONNECTIVITY_UNAVAILABLE",
+      "Não foi possível validar a conectividade de leitura.",
+    );
+  }
+}

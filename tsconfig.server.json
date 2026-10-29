@@ -13,6 +13,9 @@
     "api/**/*.ts",
     "scripts/check-database.ts",
     "scripts/migration-plan.ts",
-    "scripts/check-client-bundle.ts"
+    "scripts/check-client-bundle.ts",
+    "scripts/check-neon-preview.ts",
+    "scripts/neon-preview-client.ts",
+    "scripts/diagnostic-key.ts"
   ]
 }
