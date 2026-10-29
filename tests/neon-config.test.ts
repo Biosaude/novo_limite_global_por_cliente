@@ -163,7 +163,7 @@ test("API: saúde técnica não revela configuração, dados ou operações fina
 test("migrações: plano offline determinístico e exemplos sem credenciais reais", async () => {
   const a = await migrationPlan(),
     b = await migrationPlan();
-  assert.equal(a.length, 2);
+  assert.equal(a.length, 3);
   assert.deepEqual(a, b);
   assert.ok(a.every((m) => /^[0-9a-f]{64}$/.test(m.checksum)));
   const example = await readFile(".env.example", "utf8");

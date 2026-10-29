@@ -15,7 +15,7 @@ import {
 } from "./dataset-codec";
 const matchKey = (s: string) =>
   s.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR");
-/** Porta compatível. Nenhum endpoint chama este adaptador nesta etapa. */
+/** Porta compatível com IndexedDB; usada somente por rotas remotas explicitamente habilitadas. */
 export class PostgresDatasetRepository implements DatasetRepository {
   constructor(
     private readonly db: ScopedDatabase,
@@ -44,6 +44,81 @@ export class PostgresDatasetRepository implements DatasetRepository {
       },
     ]);
     return rows.map((row) => refreshDayAnalysis(decodeDataset(row)));
+  }
+  async loadVersion(versionId: string): Promise<Dataset | null> {
+    const scope = validateScope(
+      await this.authorization.authorize("datasets:read"),
+    );
+    const [rows] = await this.db.transaction(scope.workspaceId, [
+      {
+        text: "SELECT v.dataset_payload,s.reviews,s.client_updated_at FROM biosaude.import_versions v JOIN biosaude.dataset_state s ON (s.workspace_id,s.version_id)=(v.workspace_id,v.id) WHERE v.workspace_id=$1 AND v.id=$2",
+        values: [scope.workspaceId, versionId],
+      },
+    ]);
+    return rows[0] ? refreshDayAnalysis(decodeDataset(rows[0])) : null;
+  }
+  async versions(limit: number, offset: number) {
+    const scope = validateScope(
+      await this.authorization.authorize("datasets:read"),
+    );
+    const [rows] = await this.db.transaction(scope.workspaceId, [
+      {
+        text: "SELECT v.id,v.reference_date::text AS reference,v.filename,v.imported_at,(v.dataset_payload->'records') IS NOT NULL AS has_records,(SELECT count(*)::int FROM biosaude.financial_records r WHERE (r.workspace_id,r.version_id)=(v.workspace_id,v.id)) AS record_count,EXISTS(SELECT 1 FROM biosaude.active_datasets a WHERE (a.workspace_id,a.version_id)=(v.workspace_id,v.id)) AS active FROM biosaude.import_versions v WHERE v.workspace_id=$1 ORDER BY v.imported_at DESC,v.id LIMIT $2 OFFSET $3",
+        values: [scope.workspaceId, limit, offset],
+      },
+    ]);
+    return rows;
+  }
+  async activate(versionId: string): Promise<void> {
+    const scope = validateScope(
+      await this.authorization.authorize("datasets:write"),
+    );
+    await this.db.transaction(scope.workspaceId, [
+      {
+        text: "SELECT biosaude.require_version($1,$2)",
+        values: [scope.workspaceId, versionId],
+      },
+      {
+        text: "INSERT INTO biosaude.active_datasets(workspace_id,version_id) VALUES($1,$2) ON CONFLICT(workspace_id) DO UPDATE SET version_id=EXCLUDED.version_id",
+        values: [scope.workspaceId, versionId],
+      },
+      {
+        text: "INSERT INTO biosaude.audit_events(workspace_id,version_id,actor_subject,action) VALUES($1,$2,$3,'dataset.activate')",
+        values: [scope.workspaceId, versionId, scope.subject],
+      },
+    ]);
+  }
+  /** Só revisões de auditoria; não regrava finanças nem troca a versão ativa. */
+  async updateReviews(
+    versionId: string,
+    reviews: Dataset["reviews"],
+  ): Promise<void> {
+    const scope = validateScope(
+      await this.authorization.authorize("datasets:write"),
+    );
+    const w = scope.workspaceId,
+      json = JSON.stringify(reviews),
+      now = new Date().toISOString();
+    await this.db.transaction(w, [
+      {
+        text: "SELECT biosaude.require_version($1,$2)",
+        values: [w, versionId],
+      },
+      {
+        text: `WITH prior AS (SELECT reviews FROM biosaude.dataset_state WHERE workspace_id=$1 AND version_id=$2), keys AS (SELECT jsonb_object_keys($3::jsonb) AS k UNION SELECT jsonb_object_keys(reviews) FROM prior)
+        INSERT INTO biosaude.audit_review_history(workspace_id,version_id,issue_key,operation,review,actor_subject)
+        SELECT $1::uuid,$2,keys.k,CASE WHEN ($3::jsonb)->keys.k IS NULL THEN 'removed' ELSE 'recorded' END,($3::jsonb)->keys.k,$4 FROM keys,prior WHERE prior.reviews->keys.k IS DISTINCT FROM ($3::jsonb)->keys.k`,
+        values: [w, versionId, json, scope.subject],
+      },
+      {
+        text: "UPDATE biosaude.dataset_state SET reviews=$3::jsonb,updated_at=$4,client_updated_at=$5 WHERE workspace_id=$1 AND version_id=$2",
+        values: [w, versionId, json, now, now],
+      },
+      {
+        text: "INSERT INTO biosaude.audit_events(workspace_id,version_id,actor_subject,action) VALUES($1,$2,$3,'dataset.reviews.update')",
+        values: [w, versionId, scope.subject],
+      },
+    ]);
   }
   async clear(): Promise<void> {
     const scope = validateScope(

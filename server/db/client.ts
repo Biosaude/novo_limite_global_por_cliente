@@ -62,7 +62,29 @@ export function createDatabase(
           ...statements,
         ]);
         return result.slice(1);
-      } catch {
+      } catch (error) {
+        const code =
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined;
+        if (code === "40001")
+          throw new ServerError(
+            "REVISION_CONFLICT",
+            "A versão foi alterada; consulte novamente.",
+            409,
+          );
+        if (code === "P0002")
+          throw new ServerError(
+            "VERSION_NOT_FOUND",
+            "Versão não encontrada.",
+            404,
+          );
+        if (code === "42501")
+          throw new ServerError(
+            "ACCESS_DENIED",
+            "Acesso remoto não autorizado.",
+            403,
+          );
         throw new ServerError(
           "DATABASE_OPERATION_FAILED",
           "Não foi possível concluir a operação de persistência. Nenhum detalhe de conexão é exposto.",

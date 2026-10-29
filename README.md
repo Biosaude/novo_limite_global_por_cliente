@@ -188,3 +188,9 @@ A rota privada `POST /api/diagnostics/neon` permite somente `SELECT 1` em transa
 Configure `NEON_DIAGNOSTIC_TOKEN` somente no servidor Preview/Development e no cliente operador. `npm run db:diagnostic-key` cria um arquivo privado sem imprimir a chave; `npm run db:probe:preview -- https://seu-preview.vercel.app` testa o Preview autorizado sem precisar da URL do banco no computador do operador. Nenhum segredo deve ser enviado por chat ou aparecer nos argumentos/logs.
 
 [Passo a passo, proteção Vercel, respostas, testes e situação da consulta real](docs/NEON_ETAPA_2.md). Uma resposta de configuração/health ou um teste simulado não confirma conexão real.
+
+### Etapa 3 — APIs financeiras protegidas
+
+A preparação de identidade JWT RS256, autorização por organização, importação, versões e revisões remotas está documentada em [docs/NEON_ETAPA_3.md](docs/NEON_ETAPA_3.md). As APIs ficam desabilitadas por padrão e bloqueadas em Production; o dashboard continua usando IndexedDB. O backend não cria login nem concede acesso administrativo. Configurar `DATABASE_URL` não ativa persistência remota.
+
+`npm run test:financial-api` valida as APIs com tokens de teste assinados e PostgreSQL embarcado descartável, somente com dados sintéticos. Nenhuma migração Neon, dado real ou deploy é necessário. A conexão e persistência reais no Neon permanecem pendentes de validação autorizada.
