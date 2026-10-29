@@ -26,7 +26,10 @@ export class PostgresProposalRepository implements ProposalRepository {
     return rows.map((r) => ({
       id: String(r.id),
       version: Number(r.version),
-      createdAt: new Date(String(r.created_at)).toISOString(),
+      createdAt:
+        r.created_at instanceof Date
+          ? r.created_at.toISOString()
+          : new Date(String(r.created_at)).toISOString(),
       reason: String(r.reason),
       config: r.config as PolicyProposal["config"],
       status: "draft",

@@ -19,7 +19,8 @@
     "check:client": "tsx scripts/check-client-bundle.ts",
     "test:connectivity": "tsx --test tests/neon-connectivity.test.ts",
     "db:probe:preview": "node --env-file-if-exists=.env.neon-diagnostic --import tsx scripts/check-neon-preview.ts",
-    "db:diagnostic-key": "tsx scripts/diagnostic-key.ts"
+    "db:diagnostic-key": "tsx scripts/diagnostic-key.ts",
+    "test:financial-api": "tsx --test tests/financial-api.test.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
@@ -27,6 +28,7 @@
     "exceljs": "^4.4.0",
     "fast-xml-parser": "^5.11.2",
     "fflate": "^0.8.3",
+    "jose": "^6.2.14",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",
     "lucide-react": "^0.468.0",
