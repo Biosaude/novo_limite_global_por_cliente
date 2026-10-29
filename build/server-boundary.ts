@@ -9,7 +9,7 @@ export function serverBoundary(root = process.cwd()): Plugin {
     name: "biosaude-server-boundary",
     enforce: "pre",
     configResolved(config) {
-      if (config.env.VITE_DATABASE_URL)
+      if (config.env.VITE_DATABASE_URL || config.env.VITE_NEON_DIAGNOSTIC_TOKEN)
         throw new Error(
           "Variável pública de banco proibida; mantenha DATABASE_URL somente no servidor.",
         );
