@@ -21,6 +21,7 @@ import { fixture } from "./fixtures";
 import { readWorkbook } from "../src/importacao/workbook";
 import { suggestMappings } from "../src/importacao/mapping";
 import disabledRoute from "../api/financial/[operation]";
+import type { FinancialGetDiagnostic, FinancialGetLogger } from "../server/financial/get-diagnostics.js";
 const pg = new PGlite();
 const issuer = "https://identity.example.invalid/",
   audience = "biosaude-financial-test";
@@ -96,6 +97,7 @@ async function seed(
     "credit:read",
     "credit:write",
   ],
+  diagnostic?: FinancialGetLogger,
 ) {
   const workspace = crypto.randomUUID();
   await pg.query(
@@ -112,6 +114,7 @@ async function seed(
     environment,
     identity: verifier,
     database: db,
+    diagnostic,
   });
   async function request(
     operation: string,
@@ -1004,4 +1007,25 @@ test("GET HTTP/Node: zero bytes recebidos funcionam; JSON e chunked com conteúd
   } finally {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
+});
+
+
+test("GET financeiro: cada INVALID_INPUT identifica o ponto exato sem mudar a rejeição", async () => {
+  const records: FinancialGetDiagnostic[] = [];
+  const s = await seed("operator", ["datasets:read"], entry => records.push(entry));
+  for (const [operation, body, headers, reason] of [
+    ["active", undefined, {"x-workspace-id":"invalid"}, "workspace_header"],
+    ["active?unexpected=private-marker", undefined, {}, "query_unexpected"],
+    ["active?operation=active&operation=active", undefined, {}, "query_duplicate"],
+    ["active", {password:"private-marker"}, {}, "body_nonempty"],
+    ["active", null, {"content-length":"4"}, "body_framing"],
+  ] as [string, unknown, Record<string,string>, string][]) {
+    const result = await s.request(operation,"GET",body,undefined,headers);
+    assert.equal(result.statusCode,400); assert.deepEqual(result.data,{code:"INVALID_INPUT"});
+    assert.equal(records.at(-1)?.validation,reason); assert.equal(records.at(-1)?.status,400);
+  }
+  assert.equal((await s.request("active")).statusCode,200);
+  assert.equal(records.at(-1)?.validation,"none"); assert.equal(records.at(-1)?.phase,"load");
+  const serialized=JSON.stringify(records);
+  for (const value of [s.workspace,s.bearer,"private-marker"]) assert.ok(!serialized.includes(value));
 });
