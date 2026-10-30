@@ -1,4 +1,4 @@
-import { accessDenied } from "../errors";
+import { accessDenied } from "../errors.js";
 export type Permission =
   | "datasets:read"
   | "datasets:write"

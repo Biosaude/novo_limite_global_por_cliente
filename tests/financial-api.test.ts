@@ -1,6 +1,6 @@
 import { before, after, test } from "node:test";
 import assert from "node:assert/strict";
-import { createServer, type Server } from "node:http";
+import { createServer, request as httpRequest, type Server } from "node:http";
 import { PGlite } from "@electric-sql/pglite";
 import { generateKeyPair, exportJWK, createLocalJWKSet, SignJWT } from "jose";
 import { migrationPlan } from "../server/db/migration-plan";
@@ -21,6 +21,7 @@ import { fixture } from "./fixtures";
 import { readWorkbook } from "../src/importacao/workbook";
 import { suggestMappings } from "../src/importacao/mapping";
 import disabledRoute from "../api/financial/[operation]";
+import type { FinancialGetDiagnostic, FinancialGetLogger } from "../server/financial/get-diagnostics.js";
 const pg = new PGlite();
 const issuer = "https://identity.example.invalid/",
   audience = "biosaude-financial-test";
@@ -96,6 +97,7 @@ async function seed(
     "credit:read",
     "credit:write",
   ],
+  diagnostic?: FinancialGetLogger,
 ) {
   const workspace = crypto.randomUUID();
   await pg.query(
@@ -112,13 +114,14 @@ async function seed(
     environment,
     identity: verifier,
     database: db,
+    diagnostic,
   });
   async function request(
     operation: string,
     method = "GET",
     body?: unknown,
     revision?: number,
-    extra: Record<string, string> = {},
+    extra: Record<string, string | string[]> = {},
   ) {
     const response = {
       statusCode: 0,
@@ -854,4 +857,201 @@ test("auditoria PR13: JWT assinado não pode substituir JWKS, omitir iat ou usar
       { code: "UNAUTHENTICATED" },
     );
   }
+});
+
+test("API: JWT Ed25519 autoriza leitura e continua exigindo vínculo com a organização", async () => {
+  const s = await seed();
+  const edKeys = await generateKeyPair("EdDSA");
+  const identity = createIdentityVerifier(environment, createLocalJWKSet({
+    keys: [{ ...(await exportJWK(edKeys.publicKey)), kid: "neon-synthetic", alg: "EdDSA" }],
+  }));
+  const bearer = await new SignJWT({})
+    .setProtectedHeader({ alg: "EdDSA", kid: "neon-synthetic" })
+    .setSubject("operator")
+    .setIssuer(issuer)
+    .setAudience(audience)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(edKeys.privateKey);
+  const handler = createFinancialHandler({ environment, identity, database: db });
+  const server = createServer((req, res) => { void handler(req, res); });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const endpoint = `http://127.0.0.1:${address.port}/api/financial/active`;
+    const own = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${bearer}`, "x-workspace-id": s.workspace },
+    });
+    assert.equal(own.status, 200);
+    assert.deepEqual(await own.json(), { dataset: null });
+    const other = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${bearer}`, "x-workspace-id": crypto.randomUUID() },
+    });
+    assert.equal(other.status, 403);
+    assert.deepEqual(await other.json(), { code: "ACCESS_DENIED" });
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => error ? reject(error) : resolve()),
+    );
+  }
+});
+
+test("integração HTTP: importar, revisar, reativar e recarregar em outra sessão preserva dados no PostgreSQL descartável", async () => {
+  const { FinancialHttpClient, HttpDatasetRepository, HttpProposalRepository } = await import("../src/persistencia/http");
+  const s = await seed();
+  const server = createServer(async (req,res) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(Buffer.from(chunk));
+    const raw=Buffer.concat(chunks).toString("utf8");
+    await s.handler({method:req.method,url:req.url,headers:req.headers,body:raw || undefined},res);
+  });
+  await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+  const address=server.address();assert.ok(address && typeof address!=="string");
+  const send: typeof fetch=(url,init)=>fetch(`http://127.0.0.1:${address.port}${url}`,init);
+  const make=()=>{
+    const client=new FinancialHttpClient({workspace:s.workspace,token:async()=>s.bearer,active:()=>true,send});
+    return {datasets:new HttpDatasetRepository(client),proposals:new HttpProposalRepository(client)};
+  };
+  try {
+    const first=make();assert.equal(await first.datasets.load(),null);
+    const d=normalizeImport(input());assert.equal((await first.datasets.validate(d)).valid,true);
+    await first.datasets.save(d);
+    const saved=await first.datasets.load();assert.ok(saved);assert.notEqual(saved.id,d.id);
+    const other=make();const loaded=await other.datasets.load();assert.ok(loaded);
+    assert.deepEqual(loaded.records.map(r=>[r.category,r.cents]),saved.records.map(r=>[r.category,r.cents]));
+    assert.equal((await other.datasets.history()).length,1);
+    const issue=loaded.issues[0]?.id ?? "synthetic-review";
+    await other.datasets.updateReviews({...loaded,reviews:{[issue]:{note:"conferido",reviewedAt:new Date().toISOString()}}});
+    await assert.rejects(first.datasets.clear(),{code:"REVISION_CONFLICT"});
+    const fresh=make();const reviewed=await fresh.datasets.load();assert.equal(reviewed?.reviews[issue].note,"conferido");
+    await fresh.datasets.clear();assert.equal(await fresh.datasets.load(),null);
+    assert.equal((await fresh.datasets.history()).length,1);
+    await fresh.datasets.activate(saved.id);assert.equal((await fresh.datasets.load())?.id,saved.id);
+    await fresh.proposals.append({id:crypto.randomUUID(),version:1,createdAt:new Date().toISOString(),reason:"proposta sintética",config:proposedConfig,status:"draft"});
+    assert.equal((await fresh.proposals.list()).length,1);
+    await pg.query("UPDATE biosaude.identity_memberships SET revoked_at=now() WHERE workspace_id=$1",[s.workspace]);
+    await assert.rejects(make().datasets.load(),{code:"ACCESS_DENIED"});
+  } finally { await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve())); }
+});
+
+
+test("GET financeiro: Buffer vazio do runtime carrega a base autorizada sem alterar revisão", async () => {
+  const s = await seed();
+  const imported = await s.request("imports", "POST", input(), 0);
+  assert.equal(imported.statusCode, 201);
+  for (const body of [undefined, null, "", Buffer.alloc(0)]) {
+    for (const headers of [{}, { "content-length": "0" }] as Record<string, string>[]) {
+      const active = await s.request("active", "GET", body, undefined, { ...headers, "content-type": "application/octet-stream" });
+      assert.equal(active.statusCode, 200, active.body);
+      assert.equal(active.data.dataset.id, imported.data.versionId);
+      assert.equal(active.data.dataset.records.length, 6);
+      assert.equal(active.headers.ETag, '\"1\"');
+    }
+  }
+});
+test("GET financeiro: corpos reais, framing positivo e payload ocultado pelo parser são recusados", async () => {
+  const s = await seed();
+  const cases: [unknown, Record<string, string | string[]>][] = [
+    ...[Buffer.from("{}"), Buffer.from(" "), Buffer.from([0]), {}, [], { length: 0 },
+      "{}", "null", " ", "0", 0, false, new Uint8Array(0)].map(body => [body, {}] as [unknown, Record<string, string>]),
+    [Buffer.alloc(0), { "content-length": "2" }], [undefined, { "content-length": "2" }],
+    [null, { "content-length": "4" }], ["", { "content-length": "2" }],
+    [Buffer.alloc(0), { "transfer-encoding": "chunked" }],
+    [undefined, { "transfer-encoding": "chunked" }],
+    [Buffer.alloc(0), { "content-length": ["0", "2"] }],
+    [Buffer.alloc(0), { "content-length": "invalid" }],
+    [Buffer.alloc(0), { "content-length": "-1" }],
+  ];
+  for (const [body, headers] of cases) {
+    const before = databaseCalls;
+    const result = await s.request("active", "GET", body, undefined, headers);
+    assert.equal(result.statusCode, 400);
+    assert.deepEqual(result.data, { code: "INVALID_INPUT" });
+    assert.equal(databaseCalls, before + 1, "Somente a autorização anterior à validação; sem consulta da base");
+  }
+  const active = await s.request("active");
+  assert.equal(active.statusCode, 200); assert.equal(active.headers.ETag, '\"0\"');
+});
+test("GET HTTP/Node: zero bytes recebidos funcionam; JSON e chunked com conteúdo são recusados", async () => {
+  const s = await seed();
+  const server = createServer(async (req, res) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(Buffer.from(chunk));
+    // Shape produced by a binary serverless body parser, including the zero-byte case.
+    await s.handler({ method: req.method, url: req.url, headers: req.headers, body: Buffer.concat(chunks) }, res);
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address(); assert.ok(address && typeof address !== "string");
+    async function get(body?: string, extra: Record<string, string> = {}) {
+      return new Promise<{ status: number; data: unknown }>((resolve, reject) => {
+        const req = httpRequest({ hostname: "127.0.0.1", port: (address as { port: number }).port,
+          path: "/api/financial/active", method: "GET", headers: {
+            authorization: `Bearer ${s.bearer}`, "x-workspace-id": s.workspace,
+            "content-type": "application/octet-stream", ...extra,
+          } }, res => {
+          const chunks: Buffer[] = [];
+          res.on("data", chunk => chunks.push(Buffer.from(chunk)));
+          res.on("error", reject);
+          res.on("end", () => { try { resolve({ status: res.statusCode!, data: JSON.parse(Buffer.concat(chunks).toString()) }); } catch (error) { reject(error); } });
+        });
+        req.on("error", reject); req.end(body);
+      });
+    }
+    for (const headers of [{}, { "content-length": "0" }] as Record<string, string>[])
+      assert.deepEqual(await get(undefined, headers), { status: 200, data: { dataset: null } });
+    for (const payload of ["{}", "null", " "])
+      assert.deepEqual(await get(payload, { "content-length": String(Buffer.byteLength(payload)) }), { status: 400, data: { code: "INVALID_INPUT" } });
+    assert.deepEqual(await get("{}", { "transfer-encoding": "chunked" }), { status: 400, data: { code: "INVALID_INPUT" } });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+});
+
+
+test("GET financeiro: cada INVALID_INPUT identifica o ponto exato sem mudar a rejeição", async () => {
+  const records: FinancialGetDiagnostic[] = [];
+  const s = await seed("operator", ["datasets:read"], entry => records.push(entry));
+  for (const [operation, body, headers, reason] of [
+    ["active", undefined, {"x-workspace-id":"invalid"}, "workspace_header"],
+    ["active?unexpected=private-marker", undefined, {}, "query_unexpected"],
+    ["active?operation=active&operation=active", undefined, {}, "query_duplicate"],
+    ["active", {password:"private-marker"}, {}, "body_nonempty"],
+    ["active", null, {"content-length":"4"}, "body_framing"],
+  ] as [string, unknown, Record<string,string>, string][]) {
+    const result = await s.request(operation,"GET",body,undefined,headers);
+    assert.equal(result.statusCode,400); assert.deepEqual(result.data,{code:"INVALID_INPUT"});
+    assert.equal(records.at(-1)?.validation,reason); assert.equal(records.at(-1)?.status,400);
+    const header = JSON.parse(result.headers["X-Biosaude-Get-Diagnostic"]);
+    assert.equal(header.validation,reason); assert.equal(header.status,400);
+    assert.ok(!JSON.stringify(header).includes("private-marker"));
+    assert.ok(!JSON.stringify(header).includes(s.bearer));
+    assert.ok(!JSON.stringify(header).includes(s.workspace));
+  }
+  assert.equal((await s.request("active")).statusCode,200);
+  assert.equal(records.at(-1)?.validation,"none"); assert.equal(records.at(-1)?.phase,"load");
+  const serialized=JSON.stringify(records);
+  for (const value of [s.workspace,s.bearer,"private-marker"]) assert.ok(!serialized.includes(value));
+});
+
+
+test("GET diagnóstico na resposta: somente 400 autenticado, sem alterar permissões ou Production", async () => {
+  const s = await seed("operator", ["datasets:read"], () => {});
+  for (const result of [
+    await s.request("active"),
+    await s.request("active", "GET", undefined, undefined, {authorization:""}),
+    await s.request("active", "GET", undefined, undefined, {authorization:"Bearer invalid"}),
+    await s.request("active", "GET", undefined, undefined, {"x-workspace-id":crypto.randomUUID()}),
+    await s.request("versions?unexpected=1"),
+  ]) assert.equal(result.headers["X-Biosaude-Get-Diagnostic"], undefined);
+  const response = {statusCode:0, headers:{} as Record<string,string>, setHeader(k:string,v:string){this.headers[k]=v;},end(){}};
+  await createFinancialHandler({environment:{...environment,VERCEL_ENV:"production"},identity:verifier,database:db})(
+    {method:"GET",url:"/api/financial/active?unexpected=1",headers:{authorization:"Bearer "+s.bearer,"x-workspace-id":s.workspace}}, response);
+  assert.equal(response.statusCode,404); assert.equal(response.headers["X-Biosaude-Get-Diagnostic"],undefined);
+  const denied = await seed("no-financial-link", [], () => {});
+  const forbidden = await denied.request("active");
+  assert.equal(forbidden.statusCode,403); assert.equal(forbidden.headers["X-Biosaude-Get-Diagnostic"],undefined);
+  const missingSignature = await s.request("active?unexpected=1","GET",undefined,undefined,{authorization:"Bearer invalid"});
+  assert.equal(missingSignature.statusCode,401); assert.equal(missingSignature.headers["X-Biosaude-Get-Diagnostic"],undefined);
 });

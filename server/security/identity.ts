@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
-import { assertServerOnly, type ServerEnvironment } from "../config";
-import { ServerError } from "../errors";
+import { assertServerOnly, type ServerEnvironment } from "../config.js";
+import { ServerError } from "../errors.js";
 export interface VerifiedIdentity {
   issuer: string;
   subject: string;
@@ -58,7 +58,7 @@ export function createIdentityVerifier(
       if (!match) throw invalid();
       try {
         const { payload, protectedHeader } = await jwtVerify(match[1], key, {
-          algorithms: ["RS256"],
+          algorithms: ["RS256", "EdDSA"],
           issuer,
           audience,
           requiredClaims: ["exp", "iat", "sub", "iss", "aud"],

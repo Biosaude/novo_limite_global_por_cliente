@@ -1,5 +1,5 @@
-import type { FinancialRecord, Issue } from "../domain/types";
-import { daysBetween } from "../domain/dates";
+import type { FinancialRecord, Issue } from "../domain/types.js";
+import { daysBetween } from "../domain/dates.js";
 export function audit(records: FinancialRecord[], reference: string): Issue[] {
   const issues: Issue[] = [];
   const titles = new Map<string, FinancialRecord[]>();

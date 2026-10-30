@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePersistence } from "../persistencia/context";
 import type { Dataset } from "../domain/types";
 import { displayDate } from "../domain/dates";
 export function BaseHistory({
@@ -10,6 +11,7 @@ export function BaseHistory({
   activeId?: string;
   onRestore: (dataset: Dataset) => Promise<void>;
 }) {
+  const { mode } = usePersistence();
   const [selected, setSelected] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -74,9 +76,7 @@ export function BaseHistory({
         </>
       ) : (
         <p className="helper">
-          Versões anteriores aparecerão após a substituição de uma base. Versões
-          em memória duram esta sessão; versões salvas no navegador permanecem
-          no histórico local.
+          {mode === "remote" ? "Versões anteriores aparecerão após a atualização da base. As posições ficam preservadas na organização autorizada no Neon." : "Versões anteriores aparecerão após a substituição de uma base. Versões em memória duram esta sessão; versões salvas no navegador permanecem no histórico local."}
         </p>
       )}
       {error && (

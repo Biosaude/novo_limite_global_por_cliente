@@ -15,5 +15,8 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/api/neon-auth/:path*", "destination": "/api/auth/proxy?path=:path*" }
   ]
 }

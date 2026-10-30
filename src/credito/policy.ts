@@ -1,4 +1,4 @@
-import type { CreditConfig, Risk } from "./types";
+import type { CreditConfig, Risk } from "./types.js";
 /** Proposta inicial para revisão: não é política oficial nem concede crédito. */
 export const proposedConfig: CreditConfig = {
   minimumReceipts: 3,
