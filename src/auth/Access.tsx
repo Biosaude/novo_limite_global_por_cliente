@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import App from "../App";
+import { Recovery } from "./Recovery";
+import { needsEmailVerification, type AccessReturn, type AccessStep } from "./recovery";
 import { authClient, currentUser, financialToken } from "./client";
 import { FinancialHttpClient, HttpDatasetRepository, HttpProposalRepository, RemoteError } from "../persistencia/http";
 import { PersistenceContext, type Persistence } from "../persistencia/context";
@@ -7,7 +9,9 @@ import { createLocalRepositories } from "../persistencia/repository";
 
 type User = { id: string; email: string };
 const workspacePattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-export function Access() {
+export function Access({returned}: {returned: AccessReturn}) {
+  const [accessStep,setAccessStep] = useState<AccessStep | null>(returned.step);
+  const [accessMessage,setAccessMessage] = useState(returned.message);
   const [user,setUser] = useState<User | null>(null), [loading,setLoading] = useState(true);
   const [email,setEmail] = useState(""), [password,setPassword] = useState("");
   const [workspace,setWorkspace] = useState(import.meta.env.VITE_FINANCIAL_WORKSPACE_ID ?? "");
@@ -68,24 +72,33 @@ export function Access() {
     finally {setBusy(false);}
   }
   if (loading) return <main className="panel" role="status">Verificando sessão…</main>;
-  if (!user) return <main className="panel" style={{maxWidth:440,margin:"64px auto",padding:24}}>
+  if (!user || accessStep) return <main className="panel" style={{maxWidth:440,margin:"64px auto",padding:24}}>
     <h1>Biosaúde · Acesso ao dashboard</h1>
     <p>Entre com sua conta verificada. O acesso financeiro depende de autorização administrativa.</p>
+    {accessStep ? <Recovery key={accessStep} step={accessStep} email={email} onEmail={setEmail} returned={returned} onBack={()=>{setAccessStep(null);setError("");setAccessMessage("");}} /> : <>
     <form onSubmit={async event=> {
       event.preventDefault();if(busy)return;version.current++;setBusy(true);setError("");const epoch=version.current;
       try {
         const result=await authClient().signIn.email({email,password});
-        if (result.error) throw Error();
+        if (result.error) {
+          if (needsEmailVerification(result.error)) {setAccessStep("verify");setAccessMessage("");return;}
+          throw Error();
+        }
         const next=await currentUser(); if (!next) throw Error();
         if (version.current===epoch) {userRef.current=next;setUser(next);}
-      } catch {setError("Não foi possível entrar. Confira os dados, a verificação de e-mail e a disponibilidade do serviço.");}
+      } catch (failure) {if(needsEmailVerification(failure)){setAccessStep("verify");setAccessMessage("");}else setError("Não foi possível entrar. Confira os dados, a verificação de e-mail e a disponibilidade do serviço.");}
       finally {setPassword("");setBusy(false);}
     }}>
       <label>E-mail<input type="email" disabled={busy} autoComplete="username" value={email} required onChange={e=>setEmail(e.target.value)} /></label>
       <label>Senha<input type="password" disabled={busy} autoComplete="current-password" value={password} required onChange={e=>setPassword(e.target.value)} /></label>
       <button className="primary" disabled={busy}>Entrar</button>
     </form>
+    <p className="helper">Conta criada pelo administrador e senha ainda não definida? Use a recuperação para definir sua primeira senha. Se o cadastro estiver pendente, conclua a verificação do e-mail.</p>
+    <button type="button" className="secondary" disabled={busy} onClick={()=>{setAccessStep("request");setPassword("");setError("");}}>Definir ou recuperar senha</button>
+    <button type="button" className="secondary" disabled={busy} onClick={()=>{setAccessStep("verify");setPassword("");setError("");}}>Verificar meu e-mail</button>
     {error && <p role="alert" className="error-text">{error}</p>}
+    {accessMessage && <p role="status">{accessMessage}</p>}
+    </>}
   </main>;
   const current=local ? fallback?.scope===JSON.stringify([user.id,selected]) ? fallback.value : null : persistence;
   return <>

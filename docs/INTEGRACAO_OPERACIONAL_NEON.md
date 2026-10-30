@@ -35,7 +35,7 @@ A interface não oferece cadastro público ou autopromoção. Criar conta, verif
 
 ## Sessão e proxy
 
-O cliente usa os métodos oficiais signIn.email, getSession, token e signOut. O proxy de mesma origem é /api/neon-auth/*, reescrito pela Vercel para /api/auth/proxy. Só permite sign-in/email (POST), sign-out (POST), get-session e token (GET), com destino fixo do servidor. Não proxy SQL, cadastro, callbacks ou URLs arbitrárias.
+O cliente usa os métodos oficiais signIn.email, getSession, token e signOut. O proxy de mesma origem é /api/neon-auth/*, reescrito pela Vercel para /api/auth/proxy. Só permite sign-in/email (POST), sign-out (POST), get-session e token (GET), com destino fixo do servidor. Também permite os quatro POSTs de recuperação/verificação descritos em [Acesso inicial](ACESSO_INICIAL_NEON_AUTH.md), com callbacks fixos na mesma origem. Não proxy SQL, cadastro ou URLs arbitrárias.
 
 O proxy preserva o protocolo do SDK (incluindo x-neon-auth-middleware e set-auth-jwt), limita cookies aos prefixos Neon/Better Auth, remove Domain e Partitioned e aplica Secure/HttpOnly/SameSite=Lax e Path restrito. Cookies __Host- mantêm Path=/ conforme exigência do navegador. POST exige origem confiável; requisições cross-site são recusadas. Não há logs de corpo, senha, token ou erro bruto. Logout limpa cookies locais mesmo se a revogação remota falhar; o aviso da falha é mostrado. JWT já emitido pode continuar válido até expirar, sujeito à verificação de vínculo em toda operação.
 

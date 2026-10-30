@@ -37,3 +37,37 @@ test("SDK oficial: login, sessão, JWT e logout passam pelo proxy de mesma orige
   assert.ok(calls.includes("sign-in/email"));assert.ok(calls.includes("get-session"));assert.ok(calls.includes("token"));assert.ok(calls.includes("sign-out"));assert.equal(signedIn,false);
  } finally {globalThis.fetch=original;}
 });
+
+test("SDK oficial: definição inicial de senha, recuperação e verificação usam as rotas gerenciadas",async()=>{
+ const origin="https://synthetic.vercel.app",paths:string[]=[];
+ const proxy=createAuthProxy({VERCEL_ENV:"preview",AUTH_APP_ORIGIN:origin,NEON_AUTH_BASE_URL:"https://ep-synthetic.neonauth.us-east-2.aws.neon.build/neondb/auth"},async(url,init)=>{
+  const path=new URL(String(url)).pathname.split("/auth/")[1];paths.push(path);
+  const body=JSON.parse(String(init?.body));
+  if(path==="request-password-reset")assert.equal(body.redirectTo,origin+"/?access=reset");
+  if(path==="send-verification-email")assert.equal(body.callbackURL,origin+"/?access=verified");
+  if(path==="reset-password"){
+   assert.equal(body.newPassword,"synthetic-not-real");
+   if(body.token==="expired")return Response.json({code:"INVALID_TOKEN"},{status:400});
+   assert.equal(body.token,"synthetic-reset");
+  }
+  if(path==="email-otp/verify-email")assert.equal(body.otp,"123456");
+  return Response.json({status:true});
+ });
+ const original=globalThis.fetch;
+ globalThis.fetch=async(url,init)=>{
+  const u=new URL(String(url));assert.equal(u.origin,origin);
+  const response={statusCode:0,headers:new Headers(),body:"",setHeader(k:string,v:unknown){if(Array.isArray(v))for(const s of v)this.headers.append(k,s);else this.headers.set(k,String(v));},end(s?:string){this.body=s??"";}};
+  const headers=Object.fromEntries(new Headers(init?.headers));headers.origin=origin;
+  await proxy({url:u.href,method:init?.method??"GET",headers,body:init?.body??undefined},response);
+  return new Response(response.body,{status:response.statusCode,headers:response.headers});
+ };
+ try{
+  const auth=createAuthClient(origin+"/api/neon-auth",{adapter:BetterAuthVanillaAdapter({fetchOptions:{credentials:"same-origin",headers:{"X-Force-Fetch":"true"}}})});
+  assert.equal((await auth.requestPasswordReset({email:"synthetic@example.invalid",redirectTo:origin+"/?access=reset"})).error,null);
+  assert.equal((await auth.resetPassword({newPassword:"synthetic-not-real",token:"synthetic-reset"})).error,null);
+  await assert.rejects(auth.resetPassword({newPassword:"synthetic-not-real",token:"expired"}),{code:"bad_jwt"});
+  assert.equal((await auth.sendVerificationEmail({email:"synthetic@example.invalid",callbackURL:origin+"/?access=verified"})).error,null);
+  assert.equal((await auth.emailOtp.verifyEmail({email:"synthetic@example.invalid",otp:"123456"})).error,null);
+  assert.deepEqual(paths,["request-password-reset","reset-password","reset-password","send-verification-email","email-otp/verify-email"]);
+ }finally{globalThis.fetch=original;}
+});

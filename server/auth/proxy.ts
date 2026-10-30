@@ -1,6 +1,9 @@
 import type { ServerEnvironment } from "../config";
 import type { FinancialRequest, FinancialResponse } from "../financial/handler";
-const methods: Record<string,string> = { "sign-in/email": "POST", "sign-out": "POST", "get-session": "GET", token: "GET" };
+const methods: Record<string,string> = { "sign-in/email": "POST", "sign-out": "POST", "get-session": "GET", token: "GET",
+  "request-password-reset": "POST", "reset-password": "POST",
+  "send-verification-email": "POST", "email-otp/verify-email": "POST",
+};
 const cookieName = /^(?:__Secure-|__Host-)?(?:neon-auth|neonauth|better-auth)\.[A-Za-z0-9_.-]+$/;
 /** Proxy restrito de sessão na mesma origem. Nunca recebe destino ou SQL do cliente. */
 export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fetch) {
@@ -46,8 +49,27 @@ export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fe
         if (!body || Buffer.byteLength(body)>16384) return reply(413,{code:"PAYLOAD_TOO_LARGE"});
         const value=JSON.parse(body);
         if (!value || typeof value!=="object" || Array.isArray(value)) return reply(400,{code:"INVALID_INPUT"});
-        const allowed=path==="sign-in/email" ? ["email","password","rememberMe"] : [];
+        const fields: Record<string,string[]> = {
+          "sign-in/email": ["email","password","rememberMe"],
+          "request-password-reset": ["email","redirectTo"],
+          "reset-password": ["newPassword","token"],
+          "send-verification-email": ["email","callbackURL"],
+          "email-otp/verify-email": ["email","otp"],
+        };
+        const allowed=fields[path] ?? [];
         if (Object.keys(value).some(key=>!allowed.includes(key))) return reply(400,{code:"INVALID_INPUT"});
+        if (["request-password-reset","send-verification-email","email-otp/verify-email"].includes(path)
+          && (typeof value.email!=="string" || value.email.length>254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email))) return reply(400,{code:"INVALID_INPUT"});
+        if (path==="request-password-reset" || path==="send-verification-email") {
+          const field=path==="request-password-reset" ? "redirectTo" : "callbackURL";
+          const callback=`${origin}/?access=${path==="request-password-reset" ? "reset" : "verified"}`;
+          if (value[field]!==undefined && value[field]!==callback) return reply(400,{code:"INVALID_INPUT"});
+          value[field]=callback;
+          body=JSON.stringify(value);
+        }
+        if (path==="reset-password" && (typeof value.newPassword!=="string" || value.newPassword.length<8 || value.newPassword.length>128
+          || typeof value.token!=="string" || !/^[A-Za-z0-9._~-]{1,2048}$/.test(value.token))) return reply(400,{code:"INVALID_INPUT"});
+        if (path==="email-otp/verify-email" && (typeof value.otp!=="string" || !/^\d{4,12}$/.test(value.otp))) return reply(400,{code:"INVALID_INPUT"});
       }
       const cookies=typeof req.headers.cookie==="string" ? req.headers.cookie.split(";").map(s=>s.trim()).filter(s=>cookieName.test(s.split("=")[0])).join("; ") : "";
       if (path==="sign-out") {
@@ -64,8 +86,23 @@ export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fe
         s.replace(/;\s*(?:Domain|Path|SameSite)=[^;]*/gi,"").replace(/;\s*(?:Partitioned|Secure|HttpOnly)(?=;|$)/gi,"")+`; Secure; HttpOnly; SameSite=Lax; Path=${s.startsWith("__Host-") ? "/" : "/api/neon-auth"}`);
       if (setCookies.length) (res.setHeader as (name:string,value:unknown)=>unknown)("Set-Cookie",setCookies);
       for (const name of ["set-auth-jwt","set-auth-token"]) { const value=response.headers.get(name); if (value) res.setHeader(name,value); }
-      if (!response.ok) return reply(response.status===401 || response.status===403 ? response.status : 502,
-        {code:"AUTH_REJECTED",message:"Não foi possível autenticar. Confira os dados e a verificação de e-mail."});
+      if (!response.ok) {
+        const detail=await response.json().catch(()=>null) as {code?:unknown} | null;
+        const code=typeof detail?.code==="string" ? detail.code : "";
+        const requesting=path==="request-password-reset" || path==="send-verification-email";
+        if (requesting && ["USER_NOT_FOUND","EMAIL_ALREADY_VERIFIED"].includes(code))
+          return reply(200,{status:true}); // Não revela existência ou estado de uma conta.
+        if (path==="sign-in/email" && code==="EMAIL_NOT_VERIFIED")
+          return reply(403,{code:"EMAIL_NOT_VERIFIED",message:"Verifique seu e-mail antes de entrar."});
+        if (path==="reset-password" && ["INVALID_TOKEN","TOKEN_EXPIRED","TOKEN_NOT_FOUND"].includes(code))
+          return reply(400,{code:"INVALID_TOKEN",message:"Link inválido, expirado ou já utilizado. Solicite outro."});
+        if (path==="email-otp/verify-email")
+          return reply(400,{code:"VERIFICATION_FAILED",message:"Código inválido ou expirado. Solicite outro se necessário."});
+        if (requesting) return reply(response.status===429 ? 429 : 503,
+          {code:response.status===429 ? "TOO_MANY_REQUESTS" : "EMAIL_SERVICE_UNAVAILABLE",message:"Envio indisponível. Aguarde ou solicite ao administrador a conferência da configuração de e-mail."});
+        return reply(response.status===401 || response.status===403 ? response.status : 502,
+          {code:"AUTH_REJECTED",message:"Não foi possível autenticar. Confira os dados e a verificação de e-mail."});
+      }
       if (!response.headers.get("content-type")?.includes("application/json")) throw Error();
       return reply(200,await response.json());
     } catch {
