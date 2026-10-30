@@ -57,11 +57,26 @@ Campos registrados:
 - `query`, `operationMatches`, `runtimeOperation`: somente classificação da query da URL e de `req.query.operation`, sem URL completa, nomes arbitrários, valores ou parâmetros sensíveis.
 - `elapsedMs`, `identityMs`, `authorizationMs`, `loadMs`: durações numéricas por etapa.
 
-Não são registrados JWT, Authorization, cookies, UUID, identidade, e-mail, senha, URL, corpo, base financeira, SQL, mensagem ou stack de exceção. Uma falha do logger não altera a resposta pública. Nenhum detalhe novo é enviado ao navegador. Os cabeçalhos `X-Test-*` existem exclusivamente no bootstrap do teste local.
+Não são registrados JWT, Authorization, cookies, UUID, identidade, e-mail, senha, URL, corpo, base financeira, SQL, mensagem ou stack de exceção. Uma falha do logger não altera o status/corpo público. Os cabeçalhos `X-Test-*` existem exclusivamente no bootstrap do teste local.
 
-No deployment Preview do commit desta alteração, abrir Runtime Logs, incluir nível **Info**, filtrar a função `api/financial/[operation]` e o texto **FINANCIAL_GET_DIAGNOSTIC**. Repetir uma leitura normal e verificar o campo `validation`, seguido das categorias de corpo/query/cabeçalhos pertinentes. Usar o vínculo da própria invocação e seu horário no painel para correlacionar; não copiar dados de acesso. Não é necessário alterar nenhuma variável ou ativar outra API.
+Para não depender do histórico de logs do Hobby, HTTP 400 de GET `/api/financial/active` recebe também `X-Biosaude-Get-Diagnostic`, com as mesmas classificações sanitizadas, somente depois da validação de assinatura/claims do JWT e em Preview/Development já habilitado. Não é enviado em Production, rota desabilitada, falha JWT, resposta 200 ou 403. O corpo continua sendo `{"code":"INVALID_INPUT"}`.
 
-Se não houver linha, confirmar primeiro o commit/deployment e se a resposta veio de fato do handler; falha anterior à execução ou encerramento forçado pode impedir um registro de conclusão. Não é prova de falha do banco.
+O cabeçalho descreve somente a entrada do próprio solicitante. Erros de organização/query continuam ocorrendo na mesma ordem, antes da consulta de vínculo quando aplicável; a instrumentação não antecipa consultas, não altera autorização nem concede acesso financeiro. Nenhum registro, identidade ou dado de outra organização é exposto. Os cabeçalhos de cache existentes continuam `no-store, private`.
+
+### Um único teste controlado, sem histórico de logs
+
+1. Usar o Preview da PR que execute o commit com esta instrumentação, pela origem onde o acesso já esteja autorizado. Abrir o dashboard com a sessão existente e a organização já selecionada. Não cadastrar domínio, mudar plano, alterar banco ou importar planilha.
+2. Abrir DevTools → **Network**, limpar a lista e filtrar `api/financial/active`.
+3. Clicar **Recarregar base uma única vez**. Essa ação executa a leitura existente; não ativa versão, não importa e não grava registros.
+4. Abrir a requisição GET com 400 → **Headers → Response Headers**. Copiar **somente o valor de `x-biosaude-get-diagnostic`**. Não copiar request headers, Authorization, cookies, “Copy as cURL” ou exportar HAR.
+
+O campo `validation` identifica o ponto de rejeição; `bodyKind`, `contentType`, `contentLength`, `query`, `operationMatches` e `runtimeOperation` distinguem as representações relevantes. Os tempos separam identidade, autorização inicial e carregamento. A própria resposta recém-recebida contém a evidência, independentemente de retenção, filtros ou indisponibilidade do logger. O teste não altera cabeçalhos, query ou corpo da requisição original, evitando modificar o cenário que se quer observar.
+
+Se o resultado for 200, não haverá esse cabeçalho: preservar o resultado como leitura bem-sucedida, sem declarar homologação completa da persistência. Se for 401/403, o cabeçalho também não é emitido. Se houver 400 sem o cabeçalho, confirmar o commit do Preview e se a resposta alcançou o handler após JWT válido; não atribuir automaticamente ao banco. Um encerramento anterior ao envio da resposta também pode impedir qualquer evidência de conclusão.
+
+Um deployment imutável antigo não recebe código de commits novos. O teste exige a versão instrumentada já acessível com autenticação. Se a origem atualmente autorizada apontar para uma versão antiga, será necessário resolver o apontamento do **alias existente** para o Preview correto na Vercel; isso não exige contratar plano, registrar outro domínio ou ampliar a lista de origens por suposição. Esse apontamento externo não foi alterado por esta correção.
+
+Runtime Logs com `FINANCIAL_GET_DIAGNOSTIC` permanecem como alternativa opcional, sem depender de histórico para o teste acima.
 
 ## Os 31 segundos: investigação separada
 
@@ -76,10 +91,10 @@ Nenhum timeout, conexão, SQL, permissão ou fórmula foi ajustado por causa des
 
 ## Resultados de validação
 
-- `npm run test:unit`: **168 testes, 160 aprovados, 0 falhas, 8 ignorados** (planilhas oficiais indisponíveis). Inclui privacidade dos logs, rastreio dos cinco pontos de rejeição, medição por etapa com relógio controlado e regressões financeiras/JWT/RLS.
+- `npm run test:unit`: **169 testes, 161 aprovados, 0 falhas, 8 ignorados** (planilhas oficiais indisponíveis). Inclui privacidade dos logs/cabeçalho de resposta, rastreio dos cinco pontos de rejeição, ausência do cabeçalho em falhas de JWT/403/Production, medição por etapa com relógio controlado e regressões financeiras/JWT/RLS.
 - Build remoto de teste com `VITE_FINANCIAL_REMOTE_ENABLED=true VITE_ALLOW_LOCAL_FALLBACK=true`: aprovado, incluindo typecheck da aplicação/servidor, Vite, inspeção do bundle e carregamento dos quatro pontos de entrada serverless em Node ESM.
 - Typecheck estrito dos testes financeiros, diagnósticos e bootstrap oficial: aprovado; `node --check` do roteiro `.mjs`: aprovado.
-- Roteiro de builder + helpers oficiais + JWT real sintético + PGlite: **8 casos aprovados** na versão final.
+- Roteiro de builder + helpers oficiais + JWT real sintético + PGlite: **8 casos aprovados**, incluindo leitura do cabeçalho real de diagnóstico e preservação do corpo INVALID_INPUT, sem mocks de req.body.
 - `git diff --check`: aprovado.
 
 Arquivos: `server/financial/handler.ts`, `server/financial/get-diagnostics.ts`, `tests/financial-api.test.ts`, `tests/financial-get-diagnostics.test.ts`, `tests/runtime/financial.ts`, `scripts/check-vercel-financial-runtime.mjs` e este relatório. Não houve alteração das regras de validação, migrações, JWT, RLS, banco real, usuários, fórmulas, layout ou configurações de Production. Nenhum merge ou deploy manual foi executado.

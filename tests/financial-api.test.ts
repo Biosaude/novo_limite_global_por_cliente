@@ -1023,9 +1023,35 @@ test("GET financeiro: cada INVALID_INPUT identifica o ponto exato sem mudar a re
     const result = await s.request(operation,"GET",body,undefined,headers);
     assert.equal(result.statusCode,400); assert.deepEqual(result.data,{code:"INVALID_INPUT"});
     assert.equal(records.at(-1)?.validation,reason); assert.equal(records.at(-1)?.status,400);
+    const header = JSON.parse(result.headers["X-Biosaude-Get-Diagnostic"]);
+    assert.equal(header.validation,reason); assert.equal(header.status,400);
+    assert.ok(!JSON.stringify(header).includes("private-marker"));
+    assert.ok(!JSON.stringify(header).includes(s.bearer));
+    assert.ok(!JSON.stringify(header).includes(s.workspace));
   }
   assert.equal((await s.request("active")).statusCode,200);
   assert.equal(records.at(-1)?.validation,"none"); assert.equal(records.at(-1)?.phase,"load");
   const serialized=JSON.stringify(records);
   for (const value of [s.workspace,s.bearer,"private-marker"]) assert.ok(!serialized.includes(value));
+});
+
+
+test("GET diagnóstico na resposta: somente 400 autenticado, sem alterar permissões ou Production", async () => {
+  const s = await seed("operator", ["datasets:read"], () => {});
+  for (const result of [
+    await s.request("active"),
+    await s.request("active", "GET", undefined, undefined, {authorization:""}),
+    await s.request("active", "GET", undefined, undefined, {authorization:"Bearer invalid"}),
+    await s.request("active", "GET", undefined, undefined, {"x-workspace-id":crypto.randomUUID()}),
+    await s.request("versions?unexpected=1"),
+  ]) assert.equal(result.headers["X-Biosaude-Get-Diagnostic"], undefined);
+  const response = {statusCode:0, headers:{} as Record<string,string>, setHeader(k:string,v:string){this.headers[k]=v;},end(){}};
+  await createFinancialHandler({environment:{...environment,VERCEL_ENV:"production"},identity:verifier,database:db})(
+    {method:"GET",url:"/api/financial/active?unexpected=1",headers:{authorization:"Bearer "+s.bearer,"x-workspace-id":s.workspace}}, response);
+  assert.equal(response.statusCode,404); assert.equal(response.headers["X-Biosaude-Get-Diagnostic"],undefined);
+  const denied = await seed("no-financial-link", [], () => {});
+  const forbidden = await denied.request("active");
+  assert.equal(forbidden.statusCode,403); assert.equal(forbidden.headers["X-Biosaude-Get-Diagnostic"],undefined);
+  const missingSignature = await s.request("active?unexpected=1","GET",undefined,undefined,{authorization:"Bearer invalid"});
+  assert.equal(missingSignature.statusCode,401); assert.equal(missingSignature.headers["X-Biosaude-Get-Diagnostic"],undefined);
 });

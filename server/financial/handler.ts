@@ -78,8 +78,13 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Vary", "Authorization, X-Workspace-Id");
     let diagnostic: ReturnType<typeof getDiagnostic> | undefined;
+    let identityVerified = false;
     const reply = (status: number, body: unknown) => {
-      diagnostic?.finish(status);
+      const entry = diagnostic?.finish(status);
+      // Only sanitized metadata about this request; never financial data or raw input.
+      // Production/disabled routes never create a diagnostic; failed JWTs never receive the header.
+      if (identityVerified && status === 400 && entry)
+        res.setHeader("X-Biosaude-Get-Diagnostic", JSON.stringify(entry));
       res.statusCode = status;
       return res.end(JSON.stringify(body));
     };
@@ -103,6 +108,7 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
         );
       identity ??= dependencies.identity ?? createIdentityVerifier(env);
       const verified = await identity.verify(req.headers.authorization);
+      identityVerified = true;
       diagnostic.phase("validation");
       const url = new URL(req.url ?? "", "https://request.invalid");
       const match = /^\/api\/financial\/([a-z]+)$/.exec(url.pathname);

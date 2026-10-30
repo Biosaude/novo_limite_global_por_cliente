@@ -57,18 +57,23 @@ try {
       const req = request({ hostname: "127.0.0.1", port: running.port, path: "/api/financial/active" + query, method: "GET",
         headers: { authorization: "Bearer " + token, "x-workspace-id": "50000000-0000-4000-8000-000000000001", ...headers } }, res => {
         let raw = ""; res.setEncoding("utf8"); res.on("data", chunk => { raw += chunk; }); res.on("error", reject);
-        res.on("end", () => { try { resolveRequest({ status: res.statusCode, data: JSON.parse(raw), reason: res.headers["x-test-validation"], kind: res.headers["x-test-body"], query: res.headers["x-test-query"], roundTripMs: Math.round(performance.now()-started), elapsedMs: Number(res.headers["x-test-elapsed"]), identityMs: Number(res.headers["x-test-identity"]), authorizationMs: Number(res.headers["x-test-authorization"]), loadMs: Number(res.headers["x-test-load"]) }); } catch { reject(Error("Official runtime returned a non-JSON response")); } });
+        res.on("end", () => { try { resolveRequest({ status: res.statusCode, data: JSON.parse(raw), reason: res.headers["x-test-validation"], kind: res.headers["x-test-body"], query: res.headers["x-test-query"], diagnostic: res.headers["x-biosaude-get-diagnostic"], roundTripMs: Math.round(performance.now()-started), elapsedMs: Number(res.headers["x-test-elapsed"]), identityMs: Number(res.headers["x-test-identity"]), authorizationMs: Number(res.headers["x-test-authorization"]), loadMs: Number(res.headers["x-test-load"]) }); } catch { reject(Error("Official runtime returned a non-JSON response")); } });
       });
       req.on("error", reject); req.end(body);
     });
   }
-  const normal = await get(); assert.equal(normal.status, 200); assert.deepEqual(normal.data, { dataset: null });
+  const normal = await get(); assert.equal(normal.status, 200); assert.deepEqual(normal.data, { dataset: null }); assert.equal(normal.diagnostic, undefined);
   const binary = await get("", { "content-type": "application/octet-stream", "content-length": "0" });
   assert.equal(binary.status, 200); assert.equal(binary.kind, "buffer_empty");
   const json = await get("", { "content-type": "application/json", "content-length": "0" });
   assert.equal(json.status, 400); assert.equal(json.reason, "body_nonempty"); assert.equal(json.kind, "object_empty");
+  const liveDiagnostic = JSON.parse(json.diagnostic);
+  assert.equal(liveDiagnostic.validation, "body_nonempty"); assert.equal(liveDiagnostic.bodyKind, "object_empty");
+  assert.equal(liveDiagnostic.status, 400); assert.ok(!json.diagnostic.includes(token));
+  assert.deepEqual(json.data, {code:"INVALID_INPUT"});
   const routing = await get("?operation=active"); assert.equal(routing.status, 400); assert.equal(routing.reason, "query_unexpected");
   assert.equal(routing.query, "operation_only");
+  assert.equal(JSON.parse(routing.diagnostic).validation, "query_unexpected");
   const duplicate = await get("?operation=active&operation=active"); assert.equal(duplicate.reason, "query_duplicate");
   const workspace = await get("", { "x-workspace-id": "invalid" }); assert.equal(workspace.reason, "workspace_header");
   const content = await get("", { "content-type": "application/json", "content-length": "2" }, "{}");

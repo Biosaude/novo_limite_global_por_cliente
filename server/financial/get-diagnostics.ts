@@ -55,7 +55,7 @@ export function getDiagnostic(req: FinancialRequest, log: FinancialGetLogger = d
         const rawQuery = req.query;
         const operation = rawQuery && typeof rawQuery === "object" && "operation" in rawQuery ? rawQuery.operation : undefined;
         const round = (value: number) => Math.max(0, Math.round(value));
-        log({ event: "FINANCIAL_GET_DIAGNOSTIC", status, phase, validation, bodyKind,
+        const entry: FinancialGetDiagnostic = { event: "FINANCIAL_GET_DIAGNOSTIC", status, phase, validation, bodyKind,
           contentLength: length === undefined ? "absent" : length === "0" ? "zero" : typeof length === "string" && /^[1-9][0-9]*$/.test(length) ? "positive" : "invalid",
           contentType: type === undefined ? "absent" : typeof type !== "string" ? "other" : /^application\/json(?:\s*;|$)/i.test(type) ? "json" : /^application\/octet-stream(?:\s*;|$)/i.test(type) ? "binary" : /^text\/plain(?:\s*;|$)/i.test(type) ? "text" : /^application\/x-www-form-urlencoded(?:\s*;|$)/i.test(type) ? "form" : "other",
           workspaceHeader: workspace === undefined ? "absent" : Array.isArray(workspace) ? "multiple" : typeof workspace === "string" ? "string" : "other",
@@ -64,7 +64,9 @@ export function getDiagnostic(req: FinancialRequest, log: FinancialGetLogger = d
           operationMatches: query.getAll("operation").length === 1 && query.get("operation") === "active",
           runtimeOperation: operation === undefined ? "absent" : Array.isArray(operation) ? "multiple" : typeof operation !== "string" ? "other" : operation === "active" ? "matches" : "different",
           elapsedMs: round(time - started), identityMs: round(durations.identity), authorizationMs: round(durations.authorization), loadMs: round(durations.load),
-        });
+        };
+        try { log(entry); } catch { /* Response metadata remains available without a logger. */ }
+        return entry;
       } catch { /* Diagnostics must never change an API response. */ }
     },
   };

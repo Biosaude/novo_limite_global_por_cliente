@@ -42,5 +42,5 @@ test("GET diagnóstico: nenhuma avaliação de corpo em outras operações e fal
   assert.equal(calls, 0);
   const trace = getDiagnostic(base, () => { throw Error(secret); });
   trace.body(new Proxy({}, { ownKeys() { throw Error(secret); } }));
-  assert.doesNotThrow(() => trace.finish(400));
+  assert.equal(trace.finish(400)?.bodyKind, "other");
 });
