@@ -1,12 +1,13 @@
 import type { ServerEnvironment } from "../config.js";
 import type { FinancialRequest, FinancialResponse } from "../financial/handler.js";
+import { isConfigurationError, isRateLimit, logAuthDiagnostic, providerErrorCode, type AuthDiagnosticLogger } from "./diagnostics.js";
 const methods: Record<string,string> = { "sign-in/email": "POST", "sign-out": "POST", "get-session": "GET", token: "GET",
   "request-password-reset": "POST", "reset-password": "POST",
   "send-verification-email": "POST", "email-otp/verify-email": "POST",
 };
 const cookieName = /^(?:__Secure-|__Host-)?(?:neon-auth|neonauth|better-auth)\.[A-Za-z0-9_.-]+$/;
 /** Proxy restrito de sessão na mesma origem. Nunca recebe destino ou SQL do cliente. */
-export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fetch) {
+export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fetch, log: AuthDiagnosticLogger = logAuthDiagnostic) {
   return async (req: FinancialRequest, res: FinancialResponse) => {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.setHeader("Cache-Control", "no-store, private");
@@ -17,8 +18,17 @@ export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fe
       if (logoutCookies.length) (res.setHeader as (name:string,value:unknown)=>unknown)("Set-Cookie",logoutCookies);
       res.statusCode=status; res.end(JSON.stringify(value)); };
     const config = env ?? process.env;
-    if (!["preview","development"].includes(config.VERCEL_ENV ?? "") || !config.NEON_AUTH_BASE_URL)
+    if (!["preview","development"].includes(config.VERCEL_ENV ?? ""))
       return reply(404,{ code:"AUTH_DISABLED", message:"Autenticação indisponível neste ambiente." });
+    const report = (status: number | null, code: string) => {
+      try { log({ status, code }); } catch { /* Logging failures must not alter authentication. */ }
+    };
+    if (!config.NEON_AUTH_BASE_URL) {
+      report(null,"AUTH_PROXY_CONFIGURATION_ERROR");
+      return reply(404,{ code:"AUTH_DISABLED", message:"Autenticação indisponível neste ambiente." });
+    }
+    let phase: "configuration" | "request" | "communication" | "response" = "configuration";
+    let upstreamStatus: number | null = null;
     try {
       const base = new URL(config.NEON_AUTH_BASE_URL);
       if (base.protocol!=="https:" || base.username || base.password || base.search || base.hash
@@ -30,6 +40,7 @@ export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fe
         const u = new URL(origin);
         if (u.origin!==origin || (u.protocol!=="https:" && !(config.VERCEL_ENV==="development" && ["localhost","127.0.0.1","[::1]"].includes(u.hostname)))) throw Error();
       }
+      phase = "request";
       const url = new URL(req.url ?? "", "https://request.invalid");
       const path = url.pathname.startsWith("/api/neon-auth/") ? url.pathname.slice("/api/neon-auth/".length) : url.searchParams.get("path") ?? "";
       if (!Object.hasOwn(methods,path) || methods[path]!==req.method) return reply(404,{code:"NOT_FOUND"});
@@ -76,20 +87,33 @@ export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fe
         const names=new Set(["__Secure-neon-auth.session_token","__Secure-neonauth.session_token",...cookies.split("; ").map(c=>c.split("=")[0]).filter(c=>cookieName.test(c))]);
         logoutCookies=Array.from(names,name=>`${name}=; Max-Age=0; Secure; HttpOnly; SameSite=Lax; Path=${name.startsWith("__Host-") ? "/" : "/api/neon-auth"}`);
       }
+      phase = "communication";
       const response = await send(upstream, {
         method:req.method, redirect:"error", signal:AbortSignal.timeout(10000),
         headers:{ accept:"application/json", "x-neon-auth-middleware":"true", origin:typeof origin==="string" ? origin : origins[0],
           ...(body ? {"content-type":"application/json"} : {}), ...(cookies ? {cookie:cookies} : {}) }, body,
       });
+      upstreamStatus = response.status;
+      phase = "response";
       // Cookies são limitados à origem atual e à rota Auth; JWTs nunca são registrados.
       const setCookies = response.headers.getSetCookie().filter(s=>cookieName.test(s.split("=")[0])).map(s=>
         s.replace(/;\s*(?:Domain|Path|SameSite)=[^;]*/gi,"").replace(/;\s*(?:Partitioned|Secure|HttpOnly)(?=;|$)/gi,"")+`; Secure; HttpOnly; SameSite=Lax; Path=${s.startsWith("__Host-") ? "/" : "/api/neon-auth"}`);
       if (setCookies.length) (res.setHeader as (name:string,value:unknown)=>unknown)("Set-Cookie",setCookies);
       for (const name of ["set-auth-jwt","set-auth-token"]) { const value=response.headers.get(name); if (value) res.setHeader(name,value); }
       if (!response.ok) {
-        const detail=await response.json().catch(()=>null) as {code?:unknown} | null;
-        const code=typeof detail?.code==="string" ? detail.code : "";
+        const detail: unknown = await response.json().catch(error => {
+          if (error instanceof SyntaxError) return null;
+          throw error; // Preserve transport/timeout failures while reading the response.
+        });
+        const code = providerErrorCode(detail);
+        report(response.status,code);
         const requesting=path==="request-password-reset" || path==="send-verification-email";
+        if (isRateLimit(response.status,code))
+          return reply(429,{code:"TOO_MANY_REQUESTS",message:"Limite de solicitações atingido. Aguarde antes de tentar novamente."});
+        if (isConfigurationError(code))
+          return reply(503,{code:"AUTH_CONFIGURATION_ERROR",message:"Autenticação indisponível. Solicite ao administrador a conferência da configuração do serviço."});
+        if (response.status >= 500)
+          return reply(503,{code:requesting ? "EMAIL_SERVICE_UNAVAILABLE" : "AUTH_SERVICE_UNAVAILABLE",message:"Serviço de autenticação temporariamente indisponível. Tente novamente mais tarde."});
         if (requesting && ["USER_NOT_FOUND","EMAIL_ALREADY_VERIFIED"].includes(code))
           return reply(200,{status:true}); // Não revela existência ou estado de uma conta.
         if (path==="sign-in/email" && code==="EMAIL_NOT_VERIFIED")
@@ -98,15 +122,23 @@ export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fe
           return reply(400,{code:"INVALID_TOKEN",message:"Link inválido, expirado ou já utilizado. Solicite outro."});
         if (path==="email-otp/verify-email")
           return reply(400,{code:"VERIFICATION_FAILED",message:"Código inválido ou expirado. Solicite outro se necessário."});
-        if (requesting) return reply(response.status===429 ? 429 : 503,
-          {code:response.status===429 ? "TOO_MANY_REQUESTS" : "EMAIL_SERVICE_UNAVAILABLE",message:"Envio indisponível. Aguarde ou solicite ao administrador a conferência da configuração de e-mail."});
+        if (requesting) return reply(503,
+          {code:"EMAIL_SERVICE_UNAVAILABLE",message:"Envio indisponível. Aguarde ou solicite ao administrador a conferência da configuração de e-mail."});
         return reply(response.status===401 || response.status===403 ? response.status : 502,
           {code:"AUTH_REJECTED",message:"Não foi possível autenticar. Confira os dados e a verificação de e-mail."});
       }
       if (!response.headers.get("content-type")?.includes("application/json")) throw Error();
       return reply(200,await response.json());
-    } catch {
-      return reply(503,{code:"AUTH_UNAVAILABLE",message:"Serviço de autenticação indisponível."});
+    } catch (error) {
+      if (phase === "configuration") {
+        report(null,"AUTH_PROXY_CONFIGURATION_ERROR");
+        return reply(503,{code:"AUTH_CONFIGURATION_ERROR",message:"Autenticação indisponível. Solicite ao administrador a conferência da configuração do serviço."});
+      }
+      if (phase === "request") return reply(400,{code:"INVALID_INPUT"});
+      const timeout = error instanceof Error && error.name === "TimeoutError";
+      report(upstreamStatus,timeout ? "AUTH_UPSTREAM_TIMEOUT" : phase === "communication" ? "AUTH_UPSTREAM_NETWORK_ERROR" : "AUTH_UPSTREAM_INVALID_RESPONSE");
+      return reply(timeout ? 504 : phase === "response" ? 502 : 503,
+        {code:"AUTH_COMMUNICATION_FAILED",message:"Não foi possível comunicar com o serviço de autenticação. Tente novamente mais tarde."});
     }
   };
 }

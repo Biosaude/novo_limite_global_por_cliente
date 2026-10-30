@@ -32,7 +32,7 @@ test("recuperação: e-mail desconhecido e já verificado têm resposta genéric
  for(const code of ["USER_NOT_FOUND","EMAIL_ALREADY_VERIFIED"]){const res=response();await createAuthProxy(env,async()=>Response.json({code,message:"private"},{status:400}))(req("request-password-reset",{email:"synthetic@example.invalid"}),res);assert.equal(res.statusCode,200);assert.deepEqual(JSON.parse(res.body),{status:true});}
 });
 test("recuperação: SMTP/configuração indisponível, limite e token expirado são sanitizados",async()=>{
- for(const [path,status,code,expected] of [["request-password-reset",400,"RESET_PASSWORD_DISABLED","EMAIL_SERVICE_UNAVAILABLE"],["send-verification-email",429,"RATE_LIMIT","TOO_MANY_REQUESTS"],["reset-password",400,"INVALID_TOKEN","INVALID_TOKEN"],["email-otp/verify-email",400,"INVALID_OTP","VERIFICATION_FAILED"]] as const){
+ for(const [path,status,code,expected] of [["request-password-reset",400,"RESET_PASSWORD_DISABLED","AUTH_CONFIGURATION_ERROR"],["send-verification-email",429,"RATE_LIMIT","TOO_MANY_REQUESTS"],["reset-password",400,"INVALID_TOKEN","INVALID_TOKEN"],["email-otp/verify-email",400,"INVALID_OTP","VERIFICATION_FAILED"]] as const){
   const res=response();await createAuthProxy(env,async()=>Response.json({code,message:"private details"},{status}))(req(path,path==="reset-password"?{newPassword:"synthetic-not-real",token:"synthetic-reset"}:path==="email-otp/verify-email"?{email:"synthetic@example.invalid",otp:"123456"}:{email:"synthetic@example.invalid"}),res);assert.equal(JSON.parse(res.body).code,expected);assert.ok(!res.body.includes("private"));
  }
 });
