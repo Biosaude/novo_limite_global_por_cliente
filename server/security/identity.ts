@@ -58,7 +58,7 @@ export function createIdentityVerifier(
       if (!match) throw invalid();
       try {
         const { payload, protectedHeader } = await jwtVerify(match[1], key, {
-          algorithms: ["RS256"],
+          algorithms: ["RS256", "EdDSA"],
           issuer,
           audience,
           requiredClaims: ["exp", "iat", "sub", "iss", "aud"],
