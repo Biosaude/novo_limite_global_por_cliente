@@ -1,14 +1,14 @@
-import { assertServerOnly, type ServerEnvironment } from "../config";
-import { createDatabase, type ScopedDatabase } from "../db/client";
-import { ServerError } from "../errors";
-import { PostgresDatasetRepository } from "../persistence/postgres-datasets";
-import { PostgresProposalRepository } from "../persistence/postgres-proposals";
+import { assertServerOnly, type ServerEnvironment } from "../config.js";
+import { createDatabase, type ScopedDatabase } from "../db/client.js";
+import { ServerError } from "../errors.js";
+import { PostgresDatasetRepository } from "../persistence/postgres-datasets.js";
+import { PostgresProposalRepository } from "../persistence/postgres-proposals.js";
 import {
   createIdentityVerifier,
   type IdentityVerifier,
-} from "../security/identity";
-import { financialContext } from "../security/financial-context";
-import type { Permission } from "../security/authorization";
+} from "../security/identity.js";
+import { financialContext } from "../security/financial-context.js";
+import type { Permission } from "../security/authorization.js";
 import {
   badInput,
   exact,
@@ -16,8 +16,8 @@ import {
   object,
   reviewInput,
   versionId,
-} from "./import-input";
-import type { PolicyProposal } from "../../src/credito/types";
+} from "./import-input.js";
+import type { PolicyProposal } from "../../src/credito/types.js";
 export interface FinancialRequest {
   method?: string;
   url?: string;

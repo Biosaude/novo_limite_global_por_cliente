@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
-import { assertServerOnly, type ServerEnvironment } from "../config";
-import { checkReadOnlyConnectivity } from "../db/client";
+import { assertServerOnly, type ServerEnvironment } from "../config.js";
+import { checkReadOnlyConnectivity } from "../db/client.js";
 export interface DiagnosticRequest {
   method?: string;
   url?: string;

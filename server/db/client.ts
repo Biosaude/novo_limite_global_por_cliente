@@ -3,8 +3,8 @@ import {
   assertServerOnly,
   readDatabaseUrl,
   type ServerEnvironment,
-} from "../config";
-import { ServerError } from "../errors";
+} from "../config.js";
+import { ServerError } from "../errors.js";
 export interface Statement {
   text: string;
   values?: readonly (string | number | boolean | null)[];

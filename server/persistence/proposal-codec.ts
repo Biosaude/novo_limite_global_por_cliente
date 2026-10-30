@@ -1,6 +1,6 @@
-import type { PolicyProposal } from "../../src/credito/types";
-import { validateConfig } from "../../src/credito/policy";
-import { ServerError } from "../errors";
+import type { PolicyProposal } from "../../src/credito/types.js";
+import { validateConfig } from "../../src/credito/policy.js";
+import { ServerError } from "../errors.js";
 function shape(
   value: unknown,
   keys: readonly string[],

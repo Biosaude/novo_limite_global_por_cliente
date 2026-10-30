@@ -1,7 +1,7 @@
-import type { Dataset, DayCalculation, Issue, Mapping, SourceRow, SourceSheet } from "../domain/types";
-import { scalar } from "./mapping";
-import { calculatedDays, recognizeDaysFormula } from "./daysFormula";
-import { audit } from "../auditoria/audit";
+import type { Dataset, DayCalculation, Issue, Mapping, SourceRow, SourceSheet } from "../domain/types.js";
+import { scalar } from "./mapping.js";
+import { calculatedDays, recognizeDaysFormula } from "./daysFormula.js";
+import { audit } from "../auditoria/audit.js";
 export function analyzeDayCell(sheet: SourceSheet, map: Mapping, row: SourceRow, due: string | null, reference: string) {
   const cell = row.cells[map.fields.days];
   const original = scalar(cell);

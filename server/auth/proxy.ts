@@ -1,5 +1,5 @@
-import type { ServerEnvironment } from "../config";
-import type { FinancialRequest, FinancialResponse } from "../financial/handler";
+import type { ServerEnvironment } from "../config.js";
+import type { FinancialRequest, FinancialResponse } from "../financial/handler.js";
 const methods: Record<string,string> = { "sign-in/email": "POST", "sign-out": "POST", "get-session": "GET", token: "GET",
   "request-password-reset": "POST", "reset-password": "POST",
   "send-verification-email": "POST", "email-otp/verify-email": "POST",

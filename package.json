@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "npm run typecheck && vite build && npm run check:client",
+    "build": "npm run typecheck && vite build && npm run check:client && npm run check:server",
     "preview": "vite preview --host 127.0.0.1",
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "tsx --test tests/*.test.ts",
@@ -21,7 +21,8 @@
     "db:probe:preview": "node --env-file-if-exists=.env.neon-diagnostic --import tsx scripts/check-neon-preview.ts",
     "db:diagnostic-key": "tsx scripts/diagnostic-key.ts",
     "test:financial-api": "tsx --test tests/financial-api.test.ts",
-    "test:remote:e2e": "VITE_FINANCIAL_REMOTE_ENABLED=true VITE_ALLOW_LOCAL_FALLBACK=true npm run build && REMOTE_E2E=true playwright test tests/remote-integration.spec.ts --project=desktop"
+    "test:remote:e2e": "VITE_FINANCIAL_REMOTE_ENABLED=true VITE_ALLOW_LOCAL_FALLBACK=true npm run build && REMOTE_E2E=true playwright test tests/remote-integration.spec.ts --project=desktop",
+    "check:server": "tsx --test tests/server-runtime.test.ts"
   },
   "dependencies": {
     "@neondatabase/auth": "0.7.0-beta",

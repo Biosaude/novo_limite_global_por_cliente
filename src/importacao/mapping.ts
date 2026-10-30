@@ -4,7 +4,7 @@ import {
   type Mapping,
   type RawCell,
   type SourceWorkbook,
-} from "../domain/types";
+} from "../domain/types.js";
 export function scalar(
   value: RawCell | undefined,
 ): string | number | boolean | null {

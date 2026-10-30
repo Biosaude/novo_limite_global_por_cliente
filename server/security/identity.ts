@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
-import { assertServerOnly, type ServerEnvironment } from "../config";
-import { ServerError } from "../errors";
+import { assertServerOnly, type ServerEnvironment } from "../config.js";
+import { ServerError } from "../errors.js";
 export interface VerifiedIdentity {
   issuer: string;
   subject: string;
