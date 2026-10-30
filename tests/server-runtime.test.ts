@@ -80,6 +80,29 @@ test("serverless: JavaScript emitido carrega e executa todas as APIs em Node ESM
       const denied = response();
       await handlers.get('api/financial/[operation].js')({method:'GET', url:'/api/financial/active', headers:{}}, denied);
       assert.equal(denied.statusCode, 404);
+      const {createFinancialHandler} = await import('./server/financial/handler.js');
+      const workspace = '50000000-0000-4000-8000-000000000001';
+      const financial = createFinancialHandler({
+        environment: {VERCEL_ENV:'preview', FINANCIAL_API_ENABLED:'true'},
+        identity: {verify:async () => ({issuer:'https://synthetic.invalid',subject:'synthetic',actor:'synthetic'})},
+        database: {transaction:async (scope, statements) => {
+          assert.equal(scope, workspace);
+          assert.ok(statements.every(s => s.text.startsWith('SELECT ')));
+          return statements.map(s => s.text.startsWith('SELECT COALESCE(') ? [{revision:'0'}] : []);
+        }},
+      });
+      for (const [body, framing, status] of [
+        [Buffer.alloc(0), {}, 200], [Buffer.alloc(0), {'content-length':'0'}, 200],
+        [Buffer.from('{}'), {}, 400], [Buffer.alloc(0), {'content-length':'2'}, 400],
+        [null, {'content-length':'4'}, 400], [Buffer.alloc(0), {'transfer-encoding':'chunked'}, 400],
+      ]) {
+        const res = response();
+        await financial({method:'GET',url:'/api/financial/active',body,
+          headers:{authorization:'Bearer synthetic','x-workspace-id':workspace,...framing}}, res);
+        assert.equal(res.statusCode,status);
+        assert.deepEqual(JSON.parse(res.body), status===200 ? {dataset:null} : {code:'INVALID_INPUT'});
+        if (status===200) assert.equal(res.headers.ETag, '"0"');
+      }
       console.log('Node ESM: ' + handlers.size + ' API entries loaded; synthetic auth paths and environment gates verified');
     `);
     const result = await exec(process.execPath, [join(output, "smoke.mjs")], {

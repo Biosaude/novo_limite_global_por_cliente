@@ -182,8 +182,18 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
         } catch {
           throw badInput();
         }
-      } else if (req.body !== undefined && req.body !== null && req.body !== "")
-        throw badInput();
+      } else {
+        const received = req.body;
+        // Node/serverless parsers can represent a bodyless GET as a zero-byte Buffer.
+        const empty = received === undefined || received === null || received === "" ||
+          (req.method === "GET" && Buffer.isBuffer(received) && received.length === 0);
+        // Parsed null/empty values must not hide bytes declared on the wire.
+        const framedGet = req.method === "GET" && (
+          (req.headers["content-length"] !== undefined && req.headers["content-length"] !== "0") ||
+          req.headers["transfer-encoding"] !== undefined
+        );
+        if (!empty || framedGet) throw badInput();
+      }
       let output: unknown;
       let status = 200;
       if (operation === "active") {

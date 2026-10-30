@@ -1,6 +1,6 @@
 import { before, after, test } from "node:test";
 import assert from "node:assert/strict";
-import { createServer, type Server } from "node:http";
+import { createServer, request as httpRequest, type Server } from "node:http";
 import { PGlite } from "@electric-sql/pglite";
 import { generateKeyPair, exportJWK, createLocalJWKSet, SignJWT } from "jose";
 import { migrationPlan } from "../server/db/migration-plan";
@@ -118,7 +118,7 @@ async function seed(
     method = "GET",
     body?: unknown,
     revision?: number,
-    extra: Record<string, string> = {},
+    extra: Record<string, string | string[]> = {},
   ) {
     const response = {
       statusCode: 0,
@@ -930,4 +930,78 @@ test("integração HTTP: importar, revisar, reativar e recarregar em outra sess�
     await pg.query("UPDATE biosaude.identity_memberships SET revoked_at=now() WHERE workspace_id=$1",[s.workspace]);
     await assert.rejects(make().datasets.load(),{code:"ACCESS_DENIED"});
   } finally { await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve())); }
+});
+
+
+test("GET financeiro: Buffer vazio do runtime carrega a base autorizada sem alterar revisão", async () => {
+  const s = await seed();
+  const imported = await s.request("imports", "POST", input(), 0);
+  assert.equal(imported.statusCode, 201);
+  for (const body of [undefined, null, "", Buffer.alloc(0)]) {
+    for (const headers of [{}, { "content-length": "0" }] as Record<string, string>[]) {
+      const active = await s.request("active", "GET", body, undefined, { ...headers, "content-type": "application/octet-stream" });
+      assert.equal(active.statusCode, 200, active.body);
+      assert.equal(active.data.dataset.id, imported.data.versionId);
+      assert.equal(active.data.dataset.records.length, 6);
+      assert.equal(active.headers.ETag, '\"1\"');
+    }
+  }
+});
+test("GET financeiro: corpos reais, framing positivo e payload ocultado pelo parser são recusados", async () => {
+  const s = await seed();
+  const cases: [unknown, Record<string, string | string[]>][] = [
+    ...[Buffer.from("{}"), Buffer.from(" "), Buffer.from([0]), {}, [], { length: 0 },
+      "{}", "null", " ", "0", 0, false, new Uint8Array(0)].map(body => [body, {}] as [unknown, Record<string, string>]),
+    [Buffer.alloc(0), { "content-length": "2" }], [undefined, { "content-length": "2" }],
+    [null, { "content-length": "4" }], ["", { "content-length": "2" }],
+    [Buffer.alloc(0), { "transfer-encoding": "chunked" }],
+    [undefined, { "transfer-encoding": "chunked" }],
+    [Buffer.alloc(0), { "content-length": ["0", "2"] }],
+    [Buffer.alloc(0), { "content-length": "invalid" }],
+    [Buffer.alloc(0), { "content-length": "-1" }],
+  ];
+  for (const [body, headers] of cases) {
+    const before = databaseCalls;
+    const result = await s.request("active", "GET", body, undefined, headers);
+    assert.equal(result.statusCode, 400);
+    assert.deepEqual(result.data, { code: "INVALID_INPUT" });
+    assert.equal(databaseCalls, before + 1, "Somente a autorização anterior à validação; sem consulta da base");
+  }
+  const active = await s.request("active");
+  assert.equal(active.statusCode, 200); assert.equal(active.headers.ETag, '\"0\"');
+});
+test("GET HTTP/Node: zero bytes recebidos funcionam; JSON e chunked com conteúdo são recusados", async () => {
+  const s = await seed();
+  const server = createServer(async (req, res) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(Buffer.from(chunk));
+    // Shape produced by a binary serverless body parser, including the zero-byte case.
+    await s.handler({ method: req.method, url: req.url, headers: req.headers, body: Buffer.concat(chunks) }, res);
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address(); assert.ok(address && typeof address !== "string");
+    async function get(body?: string, extra: Record<string, string> = {}) {
+      return new Promise<{ status: number; data: unknown }>((resolve, reject) => {
+        const req = httpRequest({ hostname: "127.0.0.1", port: (address as { port: number }).port,
+          path: "/api/financial/active", method: "GET", headers: {
+            authorization: `Bearer ${s.bearer}`, "x-workspace-id": s.workspace,
+            "content-type": "application/octet-stream", ...extra,
+          } }, res => {
+          const chunks: Buffer[] = [];
+          res.on("data", chunk => chunks.push(Buffer.from(chunk)));
+          res.on("error", reject);
+          res.on("end", () => { try { resolve({ status: res.statusCode!, data: JSON.parse(Buffer.concat(chunks).toString()) }); } catch (error) { reject(error); } });
+        });
+        req.on("error", reject); req.end(body);
+      });
+    }
+    for (const headers of [{}, { "content-length": "0" }] as Record<string, string>[])
+      assert.deepEqual(await get(undefined, headers), { status: 200, data: { dataset: null } });
+    for (const payload of ["{}", "null", " "])
+      assert.deepEqual(await get(payload, { "content-length": String(Buffer.byteLength(payload)) }), { status: 400, data: { code: "INVALID_INPUT" } });
+    assert.deepEqual(await get("{}", { "transfer-encoding": "chunked" }), { status: 400, data: { code: "INVALID_INPUT" } });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
 });
