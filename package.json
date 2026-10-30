@@ -20,9 +20,11 @@
     "test:connectivity": "tsx --test tests/neon-connectivity.test.ts",
     "db:probe:preview": "node --env-file-if-exists=.env.neon-diagnostic --import tsx scripts/check-neon-preview.ts",
     "db:diagnostic-key": "tsx scripts/diagnostic-key.ts",
-    "test:financial-api": "tsx --test tests/financial-api.test.ts"
+    "test:financial-api": "tsx --test tests/financial-api.test.ts",
+    "test:remote:e2e": "VITE_FINANCIAL_REMOTE_ENABLED=true VITE_ALLOW_LOCAL_FALLBACK=true npm run build && REMOTE_E2E=true playwright test tests/remote-integration.spec.ts --project=desktop"
   },
   "dependencies": {
+    "@neondatabase/auth": "0.7.0-beta",
     "@neondatabase/serverless": "^1.2.0",
     "decimal.js": "^10.6.0",
     "exceljs": "^4.4.0",

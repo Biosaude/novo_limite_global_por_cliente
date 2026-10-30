@@ -6,7 +6,7 @@ import type { Dataset, Filters, FinancialRecord } from "../domain/types";
 import type { CreditConfig, CreditClient, PolicyProposal } from "./types";
 import { analyzeCredit } from "./analysis";
 import { proposedConfig, validateConfig } from "./policy";
-import { proposalRepository } from "../persistencia/repository";
+import { usePersistence } from "../persistencia/context";
 import { money, sum, percentage } from "../domain/money";
 import { CreditCharts } from "./CreditCharts";
 import { CreditDetail, days } from "./CreditDetail";
@@ -21,6 +21,7 @@ export function CreditModule({
   filters: Filters;
   onTrace: (title: string, records: FinancialRecord[]) => void;
 }) {
+  const { proposals: proposalRepository } = usePersistence();
   const [config, setConfig] = useState<CreditConfig>(proposedConfig),
     [proposals, setProposals] = useState<PolicyProposal[]>([]),
     [loadError, setLoadError] = useState("");

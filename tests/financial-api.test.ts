@@ -893,3 +893,41 @@ test("API: JWT Ed25519 autoriza leitura e continua exigindo vínculo com a organ
     );
   }
 });
+
+test("integração HTTP: importar, revisar, reativar e recarregar em outra sessão preserva dados no PostgreSQL descartável", async () => {
+  const { FinancialHttpClient, HttpDatasetRepository, HttpProposalRepository } = await import("../src/persistencia/http");
+  const s = await seed();
+  const server = createServer(async (req,res) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(Buffer.from(chunk));
+    const raw=Buffer.concat(chunks).toString("utf8");
+    await s.handler({method:req.method,url:req.url,headers:req.headers,body:raw || undefined},res);
+  });
+  await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+  const address=server.address();assert.ok(address && typeof address!=="string");
+  const send: typeof fetch=(url,init)=>fetch(`http://127.0.0.1:${address.port}${url}`,init);
+  const make=()=>{
+    const client=new FinancialHttpClient({workspace:s.workspace,token:async()=>s.bearer,active:()=>true,send});
+    return {datasets:new HttpDatasetRepository(client),proposals:new HttpProposalRepository(client)};
+  };
+  try {
+    const first=make();assert.equal(await first.datasets.load(),null);
+    const d=normalizeImport(input());assert.equal((await first.datasets.validate(d)).valid,true);
+    await first.datasets.save(d);
+    const saved=await first.datasets.load();assert.ok(saved);assert.notEqual(saved.id,d.id);
+    const other=make();const loaded=await other.datasets.load();assert.ok(loaded);
+    assert.deepEqual(loaded.records.map(r=>[r.category,r.cents]),saved.records.map(r=>[r.category,r.cents]));
+    assert.equal((await other.datasets.history()).length,1);
+    const issue=loaded.issues[0]?.id ?? "synthetic-review";
+    await other.datasets.updateReviews({...loaded,reviews:{[issue]:{note:"conferido",reviewedAt:new Date().toISOString()}}});
+    await assert.rejects(first.datasets.clear(),{code:"REVISION_CONFLICT"});
+    const fresh=make();const reviewed=await fresh.datasets.load();assert.equal(reviewed?.reviews[issue].note,"conferido");
+    await fresh.datasets.clear();assert.equal(await fresh.datasets.load(),null);
+    assert.equal((await fresh.datasets.history()).length,1);
+    await fresh.datasets.activate(saved.id);assert.equal((await fresh.datasets.load())?.id,saved.id);
+    await fresh.proposals.append({id:crypto.randomUUID(),version:1,createdAt:new Date().toISOString(),reason:"proposta sintética",config:proposedConfig,status:"draft"});
+    assert.equal((await fresh.proposals.list()).length,1);
+    await pg.query("UPDATE biosaude.identity_memberships SET revoked_at=now() WHERE workspace_id=$1",[s.workspace]);
+    await assert.rejects(make().datasets.load(),{code:"ACCESS_DENIED"});
+  } finally { await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve())); }
+});
