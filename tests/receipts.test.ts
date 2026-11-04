@@ -8,6 +8,7 @@ import { receiptsFixture } from "./receipts-fixture";
 import { readWorkbook } from "../src/importacao/workbook";
 import { suggestMappings } from "../src/importacao/mapping";
 import { normalize } from "../src/importacao/normalize";
+import { initialFilters, selectRecords, totals } from "../src/domain/finance";
 import {
   receiptRows,
   receiptView,
@@ -22,6 +23,41 @@ const parse = async (buffer: Buffer, ref = "2026-10-23") => {
   const source = await readWorkbook(Uint8Array.from(buffer).buffer);
   return normalize(source, suggestMappings(source), ref, "base.xlsx");
 };
+test("recebimentos: quinto dia incluso, sexto dia em atraso, calendário civil e totais preservados", async () => {
+  const d = await parse(await receiptsFixture(), "2027-01-10");
+  const base = d.records.find(r => r.category === "received")!;
+  const cases = [
+    ["2026-11-05", "2026-11-04", "early"],
+    ["2026-11-05", "2026-11-05", "ontime"],
+    ["2026-11-05", "2026-11-06", "ontime"],
+    ["2026-11-05", "2026-11-10", "ontime"], // Inclui sábado e domingo.
+    ["2026-11-05", "2026-11-11", "late"],
+    ["2026-10-30", "2026-11-04", "ontime"], // Mudança de mês e feriado de 02/11.
+    ["2026-10-30", "2026-11-05", "late"],
+    ["2026-12-29", "2027-01-03", "ontime"], // Mudança de ano e feriado de 01/01.
+    ["2026-12-29", "2027-01-04", "late"],
+    ["2024-02-28", "2024-03-04", "ontime"], // Ano bissexto.
+    ["2024-02-28", "2024-03-05", "late"],
+    ["2026-11-05", "2026-11-10", "ontime"], // Parcial do mesmo título.
+    ["2026-11-05", "2026-11-11", "late"],
+  ] as const;
+  d.records = [
+    ...d.records.filter(r => r.category !== "received"),
+    ...cases.map(([due, received], i) => ({ ...base, id: `sintetico-${i}`, due, received, cents: i + 1 })),
+    { ...base, id: "sintetico-indeterminado", due: null, cents: 100 },
+  ];
+  const original = JSON.stringify(d);
+  const before = totals(selectRecords(d, initialFilters(d)));
+  const rows = receiptRows(d);
+  assert.deepEqual(rows.slice(0, cases.length).map(r => r.condition), cases.map(c => c[2]));
+  const view = receiptView(d, rows, { ...initialReceiptFilters(d), year: "" });
+  assert.equal(view.rows.length, cases.length + 1);
+  assert.equal(new Set(view.rows.map(r => r.record.id)).size, cases.length + 1);
+  assert.equal(view.categories.reduce((n, c) => n + c.value, 0), view.summary.total);
+  assert.equal(view.categories.find(c => c.key === "unknown")!.value, 100);
+  assert.deepEqual(totals(selectRecords(d, initialFilters(d))), before);
+  assert.equal(JSON.stringify(d), original);
+});
 test("recebimentos: categorias exclusivas, centavos, pagamentos parciais e ajuizamento complementar", async () => {
   const d = await parse(await receiptsFixture());
   const original = JSON.stringify(d);
@@ -32,7 +68,7 @@ test("recebimentos: categorias exclusivas, centavos, pagamentos parciais e ajuiz
   assert.equal(v.summary.titles, 4);
   assert.deepEqual(
     v.categories.map((c) => c.value),
-    [20000, 20000, 70000, 0],
+    [20000, 50000, 40000, 0],
   );
   assert.equal(v.summary.legalTotal, 60000);
   assert.equal(v.summary.legalUnknown, 1);
@@ -49,6 +85,9 @@ test("recebimentos: categorias exclusivas, centavos, pagamentos parciais e ajuiz
   assert.equal(rows[0].days, -10);
   assert.equal(rows[1].days, 0);
   assert.equal(rows[2].days, 5);
+  assert.equal(rows[2].condition, "ontime");
+  assert.equal(v.monthly.find(p => p.name === "2026-04")!.ontime, 30000);
+  assert.equal(v.monthly.find(p => p.name === "2026-04")!.late, 0);
 });
 test("recebimentos: filtros combinados por data efetiva, trimestre, mês, condição e cliente", async () => {
   const d = await parse(await receiptsFixture()),
@@ -78,7 +117,7 @@ test("recebimentos: filtros combinados por data efetiva, trimestre, mês, condi�
   );
   assert.equal(
     receiptView(d, r, { ...f, condition: "late" }).summary.total,
-    70000,
+    40000,
   );
   assert.equal(quarterVariation(10, 0), null);
   assert.equal(quarterVariation(20, -10), null);
@@ -152,6 +191,7 @@ test("recebimentos: PDF local suporta acentos, categorias e valores sem dados de
 for (const [env, ref] of [
   ["BIOSAUDE_TEST_WORKBOOK", "2026-10-19"],
   ["BIOSAUDE_UPDATED_WORKBOOK", "2026-10-23"],
+  ["BIOSAUDE_CURRENT_WORKBOOK", "2026-11-04"],
 ])
   test(
     `recebimentos oficiais: leitura independente ${ref}`,

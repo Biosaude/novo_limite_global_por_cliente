@@ -128,7 +128,7 @@ export function receiptRows(dataset: Dataset): ReceiptRow[] {
             ? "unknown"
             : days < 0
               ? "early"
-              : days === 0
+              : days <= 5
                 ? "ontime"
                 : "late",
         legal,
