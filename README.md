@@ -166,6 +166,8 @@ Evidências: [validação dos ajustes de layout](docs/VALIDACAO_REORGANIZACAO_LA
 
 O novo painel usa os valores efetivamente recebidos e a data real do recebimento para classificar antecipados, em dia e pós-inadimplência. Inclui filtros próprios por ano/mês/trimestre, cliente, representante, condição e ajuizamento; gráficos mensais, trimestrais e de participação; comparativo por categoria; consulta e relatórios Excel/PDF com todos os resultados selecionados.
 
+Na análise de recebimentos, pagamentos da data do vencimento até o quinto dia corrido posterior são **Em dia**; do sexto dia em diante, **Pós-inadimplência**. Os cinco cards apresentam a participação no total filtrado e a nota explicativa no rodapé de Recebido em Dia. A regra não muda os saldos contratuais nem a análise de crédito. [Validação da regra e capturas dos cards](docs/VALIDACAO_RECEBIMENTOS_CINCO_DIAS.md).
+
 Ajuizamento é complementar às categorias de prazo. Sem coluna confiável, mostra **Dados indisponíveis**, sem presumir ação judicial por atraso e sem acrescentar o subconjunto novamente ao total. A planilha atual não possui essa informação. Pagamentos parciais não são deduplicados nem tratados como quitação integral.
 
 [Metodologia, resultados reais, testes, arquivos e capturas](docs/ANALISE_RECEBIMENTOS.md).

@@ -2349,12 +2349,16 @@ button.aging-share-row { width: 100%; padding: 7px 4px; border: 0; border-radius
 .receipt-filter-fields { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; }
 .receipt-filter-fields label, .receipt-query label { display: flex; flex-direction: column; gap: 7px; font-size: 11px; color: var(--muted); min-width: 0; }
 .receipt-filter-fields select, .receipt-query select, .receipt-query input { width: 100%; min-width: 0; min-height: 39px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; color: var(--navy); background: #fafbfe; font: inherit; }
-.receipt-kpis { grid-template-columns: repeat(4,minmax(0,1fr)); margin: 0; }
+.receipt-kpis { grid-template-columns: repeat(5,minmax(0,1fr)); margin: 0; }
 .receipt-kpis .kpi { display:flex;flex-direction:column;min-width:0;border-left-color:var(--accent); }
-.receipt-kpis .kpi-label { min-height:44px; }
+.receipt-kpis .kpi-label { min-height:44px; text-transform:uppercase; }
 .receipt-kpis .kpi-value { font-size:clamp(20px,1.7vw,27px);min-height:38px;letter-spacing:-.6px;overflow-wrap:anywhere; }
 .receipt-kpis .kpi p { min-height:42px; margin-bottom:12px; }
-.receipt-kpis .kpi-footer { margin-top:auto; }
+.receipt-kpis .kpi-footer { margin-top:auto;display:grid;grid-template-rows:2.8em 1.5em minmax(4.5em,auto);align-items:start;align-content:start;gap:6px;font-size:11px;line-height:1.4; }
+.receipt-kpis .kpi-footer > span { margin-left:0;white-space:normal; }
+.receipt-kpis .kpi-footer > .receipt-kpi-share { font-weight:500;color:#627087; }
+.receipt-kpi-note { font-size:11px;line-height:1.5;color:#627087;white-space:normal;overflow-wrap:normal; }
+@media(max-width:1399px) and (min-width:1101px){.receipt-kpis{grid-template-columns:repeat(3,minmax(0,1fr));}}
 .receipt-charts { display:grid;grid-template-columns: minmax(0,1.5fr) minmax(0,1fr);gap:20px; }
 .receipt-chart { min-width:0;margin:0;padding:22px; }
 .receipt-chart h3,.receipt-detail h3,.receipt-comparison h3 { margin:0 0 7px; font-size:15px;color:var(--navy); }

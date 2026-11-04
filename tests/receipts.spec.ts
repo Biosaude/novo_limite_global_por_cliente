@@ -3,18 +3,18 @@ import { readFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import ExcelJS from "exceljs";
 import { receiptsFixture } from "./receipts-fixture";
-async function activate(page: Page, repeats = 1, real = false) {
+async function activate(page: Page, repeats = 1, real = false, reference = "2026-10-23", realPath = process.env.BIOSAUDE_UPDATED_WORKBOOK) {
   await page.goto("/");
   await page
     .getByRole("navigation")
     .getByRole("button", { name: "Gerenciar Base", exact: true })
     .click();
-  await page.getByLabel("Data de referência da posição").fill("2026-10-23");
+  await page.getByLabel("Data de referência da posição").fill(reference);
   await page
     .getByLabel("Selecionar planilha Excel")
     .setInputFiles(
       real
-        ? process.env.BIOSAUDE_UPDATED_WORKBOOK!
+        ? realPath!
         : {
             name: "RECEBIMENTOS_SINTETICOS.xlsx",
             mimeType:
@@ -41,6 +41,79 @@ async function activate(page: Page, repeats = 1, real = false) {
   await expect(page.locator(".receipts-module")).toBeVisible();
 }
 const values = (page: Page) => page.locator(".receipt-kpis .kpi-value");
+test("recebimentos de 04/11: cinco cards conciliam com a leitura independente e preservam posição", async ({ page }) => {
+  test.skip(!process.env.BIOSAUDE_CURRENT_WORKBOOK, "Extração atual externa ao Git.");
+  const path = process.env.BIOSAUDE_CURRENT_WORKBOOK!;
+  const independent = JSON.parse(execFileSync("python", [
+    "scripts/validate_receipts_reference.py", path, "2026-11-04",
+  ]).toString());
+  await activate(page, 1, true, "2026-11-04", path);
+  const formatted = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
+  await expect(values(page)).toHaveText([
+    formatted(independent.total), formatted(independent.amounts.early ?? 0),
+    formatted(independent.amounts.ontime ?? 0), formatted(independent.amounts.late ?? 0), "Dados indisponíveis",
+  ]);
+  await expect(page.locator(".receipt-kpi-share").last()).toHaveText("Participação indisponível");
+  await expect(page.locator(".receipt-kpi-note")).toBeVisible();
+  await expect(page.locator(".receipt-detail")).toContainText(`${independent.count} lançamentos`);
+  await page.getByRole("navigation").getByRole("button", { name: "Visão geral", exact: true }).click();
+  await expect(page.locator(".kpi.exposure .kpi-value")).toHaveText(/25\.903\.933,68/);
+  await expect(page.locator(".kpi.upcoming .kpi-value")).toHaveText(/25\.903\.933,68/);
+  await expect(page.locator(".kpi.overdue .kpi-value")).toHaveText(/0,00/);
+  await expect(page.locator(".kpi.received .kpi-value")).toHaveText(/87\.937\.753,47/);
+});
+test("cinco cards: ordem, percentuais, nota legível, rodapés alinhados e total zero", async ({ page }, info) => {
+  await activate(page);
+  const cards = page.locator(".receipt-kpis .kpi");
+  await expect(cards.locator(".kpi-label")).toHaveText([
+    "Recebido Total", "Recebido Antecipadamente", "Recebido em Dia",
+    "Recebido Pós-Inadimplência", "Recebido de Títulos Ajuizados",
+  ]);
+  await expect(cards.locator(".receipt-kpi-share")).toHaveText([
+    "100,00% do total recebido", "18,18% do total recebido", "45,45% do total recebido",
+    "36,36% do total recebido", "54,55% do total recebido",
+  ]);
+  const note = page.locator(".receipt-kpi-note");
+  await expect(note).toHaveText("Considera pagamentos recebidos até 5 dias corridos após o vencimento.");
+  await expect(note).toBeVisible();
+  const geometry = await cards.evaluateAll(elements => elements.map(card => {
+    const box = card.getBoundingClientRect();
+    const footer = card.querySelector(".kpi-footer")!.getBoundingClientRect();
+    const note = card.querySelector(".receipt-kpi-note");
+    const share = card.querySelector(".receipt-kpi-share")!.getBoundingClientRect();
+    return { top: box.top, height: box.height, footerTop: footer.top, valid: !note || (
+      note.getBoundingClientRect().top >= share.bottom &&
+      note.getBoundingClientRect().bottom <= box.bottom &&
+      note.scrollWidth <= note.clientWidth && note.scrollHeight <= note.clientHeight
+    ) };
+  }));
+  for (const card of geometry) {
+    expect(card.valid).toBe(true);
+    for (const peer of geometry.filter(p => Math.abs(p.top - card.top) < 1)) {
+      expect(Math.abs(peer.height - card.height)).toBeLessThan(1);
+      expect(Math.abs(peer.footerTop - card.footerTop)).toBeLessThan(1);
+    }
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.locator(".receipt-kpis").screenshot({ path: `/tmp/biosaude-receipts-${info.project.name}.png` });
+  if (info.project.name === "desktop") {
+    await page.setViewportSize({ width: 1200, height: 1080 });
+    expect(await page.locator(".receipt-kpis").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length)).toBe(3);
+    await expect(note).toBeVisible();
+    expect(await note.evaluate(el => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.setViewportSize({ width: 1920, height: 1080 });
+  }
+  await page.getByLabel("Condição do recebimento", { exact: true }).selectOption("ontime");
+  await expect(cards.locator(".receipt-kpi-share")).toHaveText([
+    "100,00% do total recebido", "0,00% do total recebido", "100,00% do total recebido",
+    "0,00% do total recebido", "0,00% do total recebido",
+  ]);
+  await page.getByLabel("Mês dos recebimentos", { exact: true }).selectOption("12");
+  await expect(cards.locator(".receipt-kpi-share")).toHaveText(["—", "—", "—", "—", "Participação indisponível"]);
+  await expect(values(page)).toHaveText([/0,00/, /0,00/, /0,00/, /0,00/, "Dados indisponíveis"]);
+  await expect(note).toBeVisible();
+});
 test("recebimentos: navegação, KPIs, filtros independentes, gráficos e rastreabilidade", async ({
   page,
 }, info) => {
@@ -63,8 +136,9 @@ test("recebimentos: navegação, KPIs, filtros independentes, gráficos e rastre
   ]);
   await expect(values(page)).toHaveText([
     /1\.100,00/,
-    /700,00/,
     /200,00/,
+    /500,00/,
+    /400,00/,
     /600,00/,
   ]);
   await expect(page.locator(".receipt-chart .recharts-wrapper > svg.recharts-surface")).toHaveCount(
@@ -76,7 +150,7 @@ test("recebimentos: navegação, KPIs, filtros independentes, gráficos e rastre
   await page
     .getByLabel("Condição do recebimento", { exact: true })
     .selectOption("ontime");
-  await expect(values(page).first()).toHaveText(/200,00/);
+  await expect(values(page).first()).toHaveText(/500,00/);
   await page
     .getByRole("button", { name: "Limpar filtros de recebimentos" })
     .click();
@@ -224,25 +298,28 @@ test("recebimentos reais: total e classificações conciliados e ajuizamento ind
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await activate(page, 1, true);
+  const independent = JSON.parse(execFileSync("python", [
+    "scripts/validate_receipts_reference.py", process.env.BIOSAUDE_UPDATED_WORKBOOK!, "2026-10-23",
+  ]).toString());
+  const formatted = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
   await expect(values(page)).toHaveText([
-    /57\.902\.017,98/,
-    /27\.815\.746,35/,
-    /24\.865\.707,80/,
-    "Dados indisponíveis",
+    formatted(independent.total), formatted(independent.amounts.early ?? 0),
+    formatted(independent.amounts.ontime ?? 0), formatted(independent.amounts.late ?? 0), "Dados indisponíveis",
   ]);
+  await expect(page.locator(".receipt-kpi-share").last()).toHaveText("Participação indisponível");
   await expect(
     page.getByLabel("Situação de ajuizamento", { exact: true }),
   ).toBeDisabled();
-  await expect(page.locator(".receipt-legend")).toContainText("5.220.563,83");
+  await expect(page.locator(".receipt-legend")).toContainText(formatted(independent.amounts.ontime ?? 0));
   await expect(page.locator(".receipt-detail")).toContainText(
     "2787 lançamentos",
   );
   await page
     .getByLabel("Condição do recebimento", { exact: true })
     .selectOption("ontime");
-  await expect(values(page).first()).toHaveText(/5\.220\.563,83/);
+  await expect(values(page).first()).toHaveText(formatted(independent.amounts.ontime ?? 0));
   await expect(page.locator(".receipt-detail")).toContainText(
-    "266 lançamentos",
+    `${independent.counts.ontime ?? 0} lançamentos`,
   );
   expect(errors).toEqual([]);
 });

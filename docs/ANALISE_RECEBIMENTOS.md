@@ -1,5 +1,7 @@
 # Análise de Recebimentos — Biosaúde
 
+Atualização de 04/11/2026: [regra de cinco dias, cinco cards, nota de rodapé e validação atual](VALIDACAO_RECEBIMENTOS_CINCO_DIAS.md). As evidências históricas abaixo registram a entrega anterior do painel; os resultados atuais estão no documento vinculado.
+
 ## Funcionamento
 
 Novo painel do projeto existente, acessível em **Visão geral → Análise de Recebimentos → Análise de Crédito → Auditoria → Gerenciar Base**. Importação, Visão Geral, aging, Auditoria, crédito e armazenamento local permanecem com as mesmas regras. Não houve conexão ao Neon, migração, deploy ou mudança de autenticação/permissões.
@@ -10,7 +12,7 @@ O HTML `Q3 FY26 · Recebimentos · New Cardio Medical (5).html` não estava no a
 
 - Universo: lançamentos normalizados da aba Recebido. Valor financeiro: exclusivamente `Vr.recebido`, nunca o nominal `Vr.duplicata`.
 - Data temporal: `Dt.recebimento`, não emissão, vencimento ou crédito bancário. Registros sem data válida ou posteriores à posição importada ficam fora da análise temporal e são contados explicitamente.
-- Dias: recebimento menos vencimento em dias civis. Negativo = antecipado; zero = em dia; positivo = pós-inadimplência. São categorias exclusivas, cuja soma reconcilia o total.
+- Dias: recebimento menos vencimento em dias civis. Negativo = antecipado; de zero a cinco dias corridos = em dia; a partir do sexto dia = pós-inadimplência. Finais de semana e feriados contam normalmente. São categorias exclusivas, cuja soma reconcilia o total. A regra gerencial de recebimentos não muda vencimentos contratuais, saldos ou faixas de títulos em aberto.
 - Sem vencimento válido, o lançamento permanece como **Prazo indeterminado**, em categoria de diagnóstico visível, sem inventar pontualidade ou perder o valor na conciliação.
 - Valores monetários são agregados em centavos inteiros com checagem de precisão. Valores inválidos são sinalizados como total parcial e bloqueiam exportação. Valores negativos são preservados; a rosca percentual fica indisponível quando há negativos.
 - Cada lançamento é preservado, inclusive pagamentos parciais coincidentes. A contagem de títulos usa cliente normalizado + duplicata + parcela; na ausência, título completo ou identificador da linha. Uma linha não comprova quitação integral. Não há deduplicação por valor.

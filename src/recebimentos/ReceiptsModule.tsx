@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Wallet, ArrowDownLeft, ArrowUpRight, Scale } from "lucide-react";
+import { Wallet, ArrowDownLeft, ArrowUpRight, Clock3, Scale } from "lucide-react";
 import type { Dataset, FinancialRecord } from "../domain/types";
 import { displayDate } from "../domain/dates";
 import { money, percentage } from "../domain/money";
@@ -15,6 +15,11 @@ import {
   type ReceiptFilters,
   type Condition,
 } from "./analysis";
+const receiptShare = new Intl.NumberFormat("pt-BR", {
+  style: "percent",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 export function ReceiptsModule({
   dataset,
   onTrace,
@@ -238,18 +243,25 @@ export function ReceiptsModule({
                 view.summary.count,
               ],
               [
-                "Recebido Pós-Inadimplência",
-                view.categories.find((c) => c.key === "late")!.value,
-                ArrowUpRight,
-                "Recebimento posterior ao vencimento",
-                view.categories.find((c) => c.key === "late")!.count,
-              ],
-              [
                 "Recebido Antecipadamente",
                 view.categories.find((c) => c.key === "early")!.value,
                 ArrowDownLeft,
                 "Recebimento anterior ao vencimento",
                 view.categories.find((c) => c.key === "early")!.count,
+              ],
+              [
+                "Recebido em Dia",
+                view.categories.find((c) => c.key === "ontime")!.value,
+                Clock3,
+                "Recebimentos dentro do prazo gerencial",
+                view.categories.find((c) => c.key === "ontime")!.count,
+              ],
+              [
+                "Recebido Pós-Inadimplência",
+                view.categories.find((c) => c.key === "late")!.value,
+                ArrowUpRight,
+                "Recebimento a partir do sexto dia após o vencimento",
+                view.categories.find((c) => c.key === "late")!.count,
               ],
               [
                 "Recebido de Títulos Ajuizados",
@@ -275,10 +287,18 @@ export function ReceiptsModule({
                   </div>
                   <p>{String(description)}</p>
                   <div className="kpi-footer">
-                    {String(count)}{" "}
-                    {title === "Recebido de Títulos Ajuizados"
-                      ? "lançamentos com situação conhecida"
-                      : "lançamentos"}
+                    <span className="receipt-kpi-count">{String(count)}{" "}
+                      {title === "Recebido de Títulos Ajuizados"
+                        ? "lançamentos com situação conhecida"
+                        : "lançamentos"}
+                    </span>
+                    <span className="receipt-kpi-share">
+                      {value === null ? "Participação indisponível" : view.summary.total === 0 ? "—" :
+                        `${receiptShare.format(Number(value) / view.summary.total)} do total recebido`}
+                    </span>
+                    {title === "Recebido em Dia" && <small className="receipt-kpi-note">
+                      Considera pagamentos recebidos até 5 dias corridos após o vencimento.
+                    </small>}
                   </div>
                 </article>
               );
