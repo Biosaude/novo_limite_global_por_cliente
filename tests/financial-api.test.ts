@@ -855,3 +855,41 @@ test("auditoria PR13: JWT assinado não pode substituir JWKS, omitir iat ou usar
     );
   }
 });
+
+test("API: JWT Ed25519 autoriza leitura e continua exigindo vínculo com a organização", async () => {
+  const s = await seed();
+  const edKeys = await generateKeyPair("EdDSA");
+  const identity = createIdentityVerifier(environment, createLocalJWKSet({
+    keys: [{ ...(await exportJWK(edKeys.publicKey)), kid: "neon-synthetic", alg: "EdDSA" }],
+  }));
+  const bearer = await new SignJWT({})
+    .setProtectedHeader({ alg: "EdDSA", kid: "neon-synthetic" })
+    .setSubject("operator")
+    .setIssuer(issuer)
+    .setAudience(audience)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(edKeys.privateKey);
+  const handler = createFinancialHandler({ environment, identity, database: db });
+  const server = createServer((req, res) => { void handler(req, res); });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const endpoint = `http://127.0.0.1:${address.port}/api/financial/active`;
+    const own = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${bearer}`, "x-workspace-id": s.workspace },
+    });
+    assert.equal(own.status, 200);
+    assert.deepEqual(await own.json(), { dataset: null });
+    const other = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${bearer}`, "x-workspace-id": crypto.randomUUID() },
+    });
+    assert.equal(other.status, 403);
+    assert.deepEqual(await other.json(), { code: "ACCESS_DENIED" });
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => error ? reject(error) : resolve()),
+    );
+  }
+});
