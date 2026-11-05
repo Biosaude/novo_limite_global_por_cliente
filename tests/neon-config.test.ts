@@ -192,3 +192,14 @@ test("build: código servidor e driver SQL são bloqueados em qualquer entrada d
     (e) => !String(e).includes("NOT_A_REAL_PASSWORD"),
   );
 });
+
+test("build: SDK Auth cliente permitido sem liberar SDK servidor ou driver SQL aninhado", () => {
+  const load = serverBoundary().load as (id: string) => unknown;
+  assert.doesNotThrow(() => load("/synthetic/node_modules/@neondatabase/auth/dist/index.mjs"));
+  for (const path of [
+    "/synthetic/node_modules/@neondatabase/serverless/index.mjs",
+    "/synthetic/node_modules/@neondatabase/auth/node_modules/@neondatabase/serverless/index.mjs",
+    "/synthetic/node_modules/@neondatabase/auth/dist/server-synthetic.mjs",
+    "/synthetic/node_modules/@neondatabase/auth/dist/next/server.mjs",
+  ]) assert.throws(() => load(path), /servidor.*navegador/);
+});

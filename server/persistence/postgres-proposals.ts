@@ -1,12 +1,12 @@
-import type { ProposalRepository } from "../../src/persistencia/contracts";
-import type { PolicyProposal } from "../../src/credito/types";
-import type { ScopedDatabase } from "../db/client";
+import type { ProposalRepository } from "../../src/persistencia/contracts.js";
+import type { PolicyProposal } from "../../src/credito/types.js";
+import type { ScopedDatabase } from "../db/client.js";
 import {
   denyAll,
   validateScope,
   type AuthorizationGate,
-} from "../security/authorization";
-import { validateProposal } from "./proposal-codec";
+} from "../security/authorization.js";
+import { validateProposal } from "./proposal-codec.js";
 export class PostgresProposalRepository implements ProposalRepository {
   constructor(
     private readonly db: ScopedDatabase,

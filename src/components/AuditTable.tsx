@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { usePersistence } from "../persistencia/context";
 import type { Dataset, Issue } from "../domain/types";
 import { categoryLabel } from "../domain/types";
 import { EmptyState } from "./EmptyState";
@@ -15,6 +16,7 @@ export function AuditTable({
   onReview?: (id: string, note: string) => Promise<void>;
   onDetail?: (ids: string[]) => void;
 }) {
+  const { mode } = usePersistence();
   const [query, setQuery] = useState(""),
     [kind, setKind] = useState(""),
     [page, setPage] = useState(0);
@@ -88,7 +90,7 @@ export function AuditTable({
                   <th>Tipo</th>
                   <th>Origem / título</th>
                   <th>Ocorrência</th>
-                  {!readonly && <th>Conferência local</th>}
+                  {!readonly && <th>{mode === "remote" ? "Conferência" : "Conferência local"}</th>}
                 </tr>
               </thead>
               <tbody>

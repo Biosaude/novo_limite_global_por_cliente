@@ -1,18 +1,18 @@
-import type { DatasetRepository } from "../../src/persistencia/contracts";
-import type { Dataset } from "../../src/domain/types";
-import { enrichCreditRecords } from "../../src/credito/analysis";
-import { refreshDayAnalysis } from "../../src/importacao/dayAnalysis";
-import type { ScopedDatabase, Statement } from "../db/client";
+import type { DatasetRepository } from "../../src/persistencia/contracts.js";
+import type { Dataset } from "../../src/domain/types.js";
+import { enrichCreditRecords } from "../../src/credito/analysis.js";
+import { refreshDayAnalysis } from "../../src/importacao/dayAnalysis.js";
+import type { ScopedDatabase, Statement } from "../db/client.js";
 import {
   denyAll,
   validateScope,
   type AuthorizationGate,
-} from "../security/authorization";
+} from "../security/authorization.js";
 import {
   validateDataset,
   financialSnapshot,
   decodeDataset,
-} from "./dataset-codec";
+} from "./dataset-codec.js";
 const matchKey = (s: string) =>
   s.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR");
 /** Porta compatível com IndexedDB; usada somente por rotas remotas explicitamente habilitadas. */

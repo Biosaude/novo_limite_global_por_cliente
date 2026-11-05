@@ -5,13 +5,13 @@ import {
   type Issue,
   type Mapping,
   type SourceWorkbook,
-} from "../domain/types";
-import { scalar, cellText, blank } from "./mapping";
-import { dateValue, validDate } from "../domain/dates";
-import { cents, sum } from "../domain/money";
-import { analyzeDayCell } from "./dayAnalysis";
-import { isDaysFormulaGuide } from "./daysFormula";
-import { audit } from "../auditoria/audit";
+} from "../domain/types.js";
+import { scalar, cellText, blank } from "./mapping.js";
+import { dateValue, validDate } from "../domain/dates.js";
+import { cents, sum } from "../domain/money.js";
+import { analyzeDayCell } from "./dayAnalysis.js";
+import { isDaysFormulaGuide } from "./daysFormula.js";
+import { audit } from "../auditoria/audit.js";
 export function normalize(
   source: SourceWorkbook,
   mappings: Mapping[],

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { usePersistence } from "../persistencia/context";
 import {
   Download,
   FolderOpen,
@@ -33,6 +34,8 @@ export function ImportManager({
   onCommit: (dataset: Dataset, remember: boolean) => Promise<void>;
   onForget: () => Promise<void>;
 }) {
+  const { mode } = usePersistence();
+  const remote = mode === "remote";
   const [source, setSource] = useState<SourceWorkbook | null>(null);
   const [mappings, setMappings] = useState<Mapping[]>([]);
   const [filename, setFilename] = useState("");
@@ -140,7 +143,7 @@ export function ImportManager({
               aplicar.
             </p>
           </div>
-          <span className="tag">EXCEL · DADOS LOCAIS</span>
+          <span className="tag">{remote ? "EXCEL · NEON" : "EXCEL · DADOS LOCAIS"}</span>
         </div>
         <div
           className="base-actions"
@@ -244,7 +247,7 @@ export function ImportManager({
               {active.records.length.toLocaleString("pt-BR")} registros
             </p>
             <small>
-              {remembered
+              {remote ? "Persistida na organização selecionada no Neon." : remembered
                 ? "Salva neste navegador e dispositivo."
                 : "Somente nesta sessão; fechar ou recarregar a página remove a base."}
             </small>
@@ -257,7 +260,7 @@ export function ImportManager({
               try {
                 await onForget();
                 setSuccess(
-                  "Base ativa removida. Versões anteriores permanecem no histórico local ou desta sessão.",
+                  remote ? "Base desativada. Versões anteriores permanecem no histórico da organização." : "Base ativa removida. Versões anteriores permanecem no histórico local ou desta sessão.",
                 );
               } catch (e) {
                 setError(
@@ -298,8 +301,7 @@ export function ImportManager({
               automaticamente quando o mapeamento é reconhecido.
             </p>
             <small>
-              Até 20 MB. Processamento no próprio navegador, sem envio do
-              arquivo. {busy ? "Processando…" : filename}
+              {remote ? "Leitura local do Excel; conteúdo validado é enviado à API (até 3 MB de JSON)." : "Até 20 MB. Processamento no próprio navegador, sem envio do arquivo."} {busy ? "Processando…" : filename}
             </small>
           </div>
           <label className="date-field">
@@ -338,23 +340,20 @@ export function ImportManager({
           <div className="privacy-note">
             <ShieldCheck size={20} />
             <p>
-              Os dados e as justificativas são locais. Não há autenticação
-              administrativa nesta etapa. Use apenas um dispositivo confiável.
+              {remote ? "Os dados e as justificativas são enviados à organização autorizada. Nenhum cadastro concede acesso financeiro automaticamente." : "Os dados e as justificativas são locais. Não há autenticação administrativa nesta etapa. Use apenas um dispositivo confiável."}
             </p>
           </div>
           <label className="check-label">
             <input
               type="checkbox"
-              checked={remember}
-              disabled={busy}
+              checked={remote || remember}
+              disabled={busy || remote}
               onChange={(event) => setRemember(event.target.checked)}
             />
-            Lembrar a nova base neste navegador
+            {remote ? "Persistir a base na organização autorizada" : "Lembrar a nova base neste navegador"}
           </label>
           <p className="helper">
-            Opcional: usa IndexedDB, sem sincronização ou backup. Outros
-            usuários do mesmo perfil do navegador podem acessar. Limpar os dados
-            do site remove a base.
+            {remote ? "A atualização exige confirmação e autorização da API; dados remotos não são copiados para o IndexedDB." : "Opcional: usa IndexedDB, sem sincronização ou backup. Outros usuários do mesmo perfil do navegador podem acessar. Limpar os dados do site remove a base."}
           </p>
         </article>
       </section>

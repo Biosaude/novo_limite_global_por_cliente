@@ -33,7 +33,7 @@ import {
 } from "./domain/finance";
 import { displayDate, cutoff } from "./domain/dates";
 import { BaseHistory } from "./components/BaseHistory";
-import { localRepository } from "./persistencia/repository";
+import { usePersistence } from "./persistencia/context";
 const ReceiptsModule = lazy(() =>
   import("./recebimentos/ReceiptsModule").then((module) => ({
     default: module.ReceiptsModule,
@@ -70,6 +70,7 @@ const emptyFilters: Filters = {
   category: "",
 };
 export default function App() {
+  const { datasets: localRepository, remote, mode } = usePersistence();
   const [view, setView] = useState<View>("dashboard"),
     [notice, setNotice] = useState(true);
   const [active, setActive] = useState<Dataset | null>(null),
@@ -104,8 +105,8 @@ export default function App() {
       .catch((error) => {
         if (alive)
           setStorageError(
-            error.message +
-              " Você ainda pode importar uma base para uso nesta sessão.",
+            error.message + (mode === "remote" ? " Use Recarregar base para verificar a posição remota; não houve troca para armazenamento local." :
+              " Você ainda pode importar uma base para uso nesta sessão."),
           );
       })
       .finally(() => {
@@ -116,8 +117,16 @@ export default function App() {
     };
   }, []);
   async function commit(candidate: Dataset, remember: boolean) {
-    const dataset = { ...candidate, updatedAt: new Date().toISOString() };
-    if (remember) await localRepository.save(dataset);
+    let dataset = { ...candidate, updatedAt: new Date().toISOString() };
+    if (remote) {
+      const validation = await remote.validate(dataset);
+      if (validation.valid !== true) throw new Error("A validação no servidor encontrou erros impeditivos.");
+      await remote.save(dataset);
+      const saved = await remote.load();
+      if (!saved) throw new Error("A gravação não pôde ser confirmada. Recarregue a base.");
+      dataset = { ...saved, updatedAt: saved.updatedAt ?? saved.importedAt };
+      remember = true;
+    } else if (remember) await localRepository.save(dataset);
     else if (remembered) await localRepository.clear();
     setVersions((current) => {
       const map = new Map(current.map((version) => [version.id, version]));
@@ -135,8 +144,14 @@ export default function App() {
     setDetail(null);
   }
   async function restore(dataset: Dataset) {
-    const durable = durableIds.includes(dataset.id);
-    if (durable) await localRepository.save(dataset);
+    const durable = !!remote || durableIds.includes(dataset.id);
+    if (remote) {
+      await remote.activate(dataset.id);
+      const canonical = await remote.load();
+      if (!canonical) throw new Error("Recarregue a base para confirmar a ativação.");
+      dataset = canonical;
+    }
+    else if (durable) await localRepository.save(dataset);
     else if (remembered) await localRepository.clear();
     if (active)
       setVersions((current) => [
@@ -171,8 +186,16 @@ export default function App() {
         [id]: { note, reviewedAt: new Date().toISOString() },
       },
     };
-    if (remembered) await localRepository.save(next);
-    setActive(next);
+    if (remote) {
+      await remote.updateReviews(next);
+      const saved = await remote.load();
+      if (!saved) throw new Error("Recarregue a base para confirmar a revisão.");
+      setActive(saved);
+      setVersions(current=>current.map(value=>value.id===saved.id?saved:value));
+    } else {
+      if (remembered) await localRepository.save(next);
+      setActive(next);
+    }
   }
   const records = useMemo(
     () => (active ? selectRecords(active, filters) : []),
@@ -339,14 +362,14 @@ export default function App() {
               <div>
                 <strong>
                   {active
-                    ? remembered
+                    ? mode === "remote" ? "Base persistida no Neon — organização atual" : remembered
                       ? "Base salva somente neste navegador"
                       : "Base disponível somente nesta sessão"
                     : "Pronto para receber sua base financeira"}
                 </strong>
                 <p>
                   {active
-                    ? remembered
+                    ? mode === "remote" ? "Leituras e alterações usam a API autenticada. Conflitos exigem recarregar a base; não há fallback automático." : remembered
                       ? "A base e as conferências ficam neste dispositivo. Não há sincronização com servidor ou outros dispositivos."
                       : "Ao recarregar ou fechar a página, os dados desta sessão serão perdidos. Use Gerenciar Base para importar novamente."
                     : "Importe seu Excel, confira o mapeamento e confirme a base. Nenhum indicador é simulado."}
