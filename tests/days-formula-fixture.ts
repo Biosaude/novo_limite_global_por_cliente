@@ -19,7 +19,7 @@ export function officialDaysFormulaFixture(buffer: Buffer): Buffer {
 
 export async function syntheticDaysFormulaFixture(invalidFormula = false): Promise<Buffer> {
   const {default: ExcelJS} = await import('exceljs');
-  const {createTemplate} = await import('../src/importacao/template');
+  const {createTemplate} = await import('./legacy-template');
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await createTemplate());
   for (const [index, sheet] of workbook.worksheets.entries()) {

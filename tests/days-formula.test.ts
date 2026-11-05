@@ -7,7 +7,7 @@ import { officialDaysFormulaFixture } from "./days-formula-fixture";
 import { readWorkbook } from "../src/importacao/workbook";
 import { suggestMappings } from "../src/importacao/mapping";
 import { normalize } from "../src/importacao/normalize";
-import { createTemplate } from "../src/importacao/template";
+import { createTemplate } from "./legacy-template";
 import { refreshDayAnalysis } from "../src/importacao/dayAnalysis";
 import { audit } from "../src/auditoria/audit";
 import { currentDate } from "../src/domain/dates";
@@ -163,7 +163,7 @@ test('faixas e média ponderada usam vencimento e referência e ignoram caches d
   assert.equal(weightedOverdueAging(data.records,'2026-10-23').days,expected);
 });
 
-test('modelo baixável inclui fórmulas oficiais sem registros fictícios e preserva auditoria de linhas incompletas', async () => {
+test('modelo legado inclui fórmulas oficiais sem registros fictícios e preserva auditoria de linhas incompletas', async () => {
   const source=await read(await createTemplate()), mappings=suggestMappings(source);
   assert.equal((source.sheets[0].rows[1].cells[5] as any).formula,'E2-TODAY()');
   assert.equal((source.sheets[1].rows[1].cells[5] as any).formula,'TODAY()-E2');

@@ -115,9 +115,10 @@ export function normalizeImport(value: unknown): Dataset {
       if (
         !Object.keys(fieldLabels).every(
           (k) =>
-            Number.isSafeInteger(fields[k]) &&
+            (["clientCode", "boleto", "companyCode"].includes(k) && fields[k] === undefined) ||
+            (Number.isSafeInteger(fields[k]) &&
             Number(fields[k]) >= -1 &&
-            Number(fields[k]) < 500,
+            Number(fields[k]) < 500),
         )
       )
         throw badInput();

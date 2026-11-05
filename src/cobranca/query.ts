@@ -13,6 +13,7 @@ import {
 import { daysBetween, dateValue } from "../domain/dates";
 import { cents, sum } from "../domain/money";
 import { cellText, normalized, scalar } from "../importacao/mapping";
+import { clientIdentity, clientLabel, clientFilterLabel } from "../domain/clients";
 export interface CollectionRow {
   record: FinancialRecord;
   client: string;
@@ -50,7 +51,7 @@ export const initialCollectionQuery: CollectionQuery = {
 const matchKey = (name: string) =>
   name.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR");
 const titleKey = (row: CollectionRow) =>
-  `${matchKey(row.client)}\u0000${row.document ? row.document + "\u0000" + row.installment : row.title || row.record.id}`;
+  `${row.record.clientCode ? clientIdentity(row.record) : matchKey(row.client)}\u0000${row.document ? row.document + "\u0000" + row.installment : row.title || row.record.id}`;
 export function collectionRows(
   dataset: Dataset,
   records: FinancialRecord[],
@@ -149,9 +150,9 @@ export function selectCollectionRows(
               agingBandIndex(row.record, reference) as AgingBandIndex,
             ))) &&
         (!query.clientSearch ||
-          matchKey(row.client).includes(matchKey(query.clientSearch))) &&
+          matchKey(`${row.client} ${row.record.clientCode || ""} ${row.record.boleto || ""}`).includes(matchKey(query.clientSearch))) &&
         (!query.documentSearch ||
-          matchKey(row.document + " " + row.title).includes(
+          matchKey(row.document + " " + row.title + " " + (row.record.boleto || "")).includes(
             matchKey(query.documentSearch),
           )),
     )
@@ -179,7 +180,7 @@ export function collectionSummary(rows: CollectionRow[], reference: string) {
   return {
     recordCount: rows.length,
     titleCount: new Set(rows.map(titleKey)).size,
-    clientCount: new Set(rows.map((row) => matchKey(row.client))).size,
+    clientCount: new Set(rows.map((row) => row.record.clientCode ? clientIdentity(row.record) : matchKey(row.client))).size,
     totalOpen: sum(rows.map((row) => row.openCents ?? 0)),
     totalOverdue: sum(
       rows
@@ -205,14 +206,14 @@ export function collectionGroups(
 ) {
   const groups = new Map<string, CollectionRow[]>();
   for (const row of rows) {
-    const key = matchKey(row[field]);
+    const key = field === "client" && row.record.clientCode ? clientIdentity(row.record) : matchKey(row[field]);
     const entries = groups.get(key) ?? [];
     entries.push(row);
     groups.set(key, entries);
   }
   return [...groups.values()]
     .map((entries) => ({
-      name: entries[0][field],
+      name: field === "client" ? clientLabel(entries[0].record) : entries[0][field],
       ...collectionSummary(entries, reference),
     }))
     .sort(
@@ -255,7 +256,7 @@ export function reportFilters(view: CollectionView): string[] {
   return [
     `Ano: ${view.filters.year}`,
     `Mês de referência: ${view.filters.month}`,
-    `Cliente: ${view.filters.client || "Todos"}`,
+    `Cliente: ${clientFilterLabel(view.filters.client) || "Todos"}`,
     `Representante: ${view.filters.representative || "Todos"}`,
     `Categoria: ${view.filters.category === "overdue" ? "Vencidos (inadimplência)" : view.filters.category === "upcoming" ? "A Vencer" : view.filters.category === "received" ? "Recebido (sem pendências)" : "Todas"}`,
     `Faixas: ${view.query.bands.length ? view.query.bands.map((index) => agingBandNames[index]).join(", ") : "Todas"}`,

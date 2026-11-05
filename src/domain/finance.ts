@@ -3,6 +3,7 @@ import { cutoff, daysBetween } from "./dates";
 import { sum } from "./money";
 import Decimal from "decimal.js";
 import { agingBandIndex, agingBandNames } from "./agingBands";
+import { clientIdentity, clientLabel, matchesClient } from "./clients";
 const AgingDecimal = Decimal.clone({ precision: 40 });
 export function initialFilters(dataset: Dataset): Filters {
   return {
@@ -21,8 +22,7 @@ export function selectRecords(
   const start = `${filters.year}-01-01`;
   return dataset.records.filter(
     (record) =>
-      (!filters.client ||
-        (record.client || "Sem cliente") === filters.client) &&
+      matchesClient(record, filters.client) &&
       (!filters.representative ||
         (record.representative || "Sem representante") ===
           filters.representative) &&
@@ -58,13 +58,13 @@ export function groupBy(
 ): Group[] {
   const groups = new Map<string, FinancialRecord[]>();
   for (const record of records) {
-    const key =
+    const key = field === "client" ? clientIdentity(record) :
       record[field] ||
-      (field === "client" ? "Sem cliente" : "Sem representante");
+      "Sem representante";
     groups.set(key, [...(groups.get(key) ?? []), record]);
   }
   return [...groups]
-    .map(([name, entries]) => ({ name, ...totals(entries) }))
+    .map(([name, entries]) => ({ name: field === "client" ? clientLabel(entries[0]) : name, ...totals(entries) }))
     .sort(
       (a, b) => b.global - a.global || a.name.localeCompare(b.name, "pt-BR"),
     );

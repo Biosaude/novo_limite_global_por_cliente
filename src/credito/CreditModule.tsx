@@ -66,7 +66,7 @@ export function CreditModule({
   );
   const matched = clients
     .filter((client) =>
-      client.name
+      `${client.name} ${client.variants.join(" ")} ${client.records.map(r => r.boleto || "").join(" ")}`
         .toLocaleLowerCase("pt-BR")
         .includes(query.toLocaleLowerCase("pt-BR")),
     )

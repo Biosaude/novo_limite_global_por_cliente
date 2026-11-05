@@ -156,6 +156,8 @@ export function receiptReportTables(view: ReceiptView, issuedAt: string) {
         "Ajuizamento",
         "Evidência de ajuizamento",
         "Aba / linha",
+        "Código do Cliente",
+        "Nº do Boleto",
       ],
       rows: view.rows.map((r) => [
         r.client,
@@ -172,6 +174,8 @@ export function receiptReportTables(view: ReceiptView, issuedAt: string) {
         legalLabels[r.legal],
         r.legalSource ?? "Sem campo confiável",
         `${r.record.sheet} / ${r.record.row}`,
+        r.record.clientCode || "Não informado",
+        r.record.boleto || "Boleto não informado",
       ]),
     },
   ] satisfies {
@@ -198,6 +202,7 @@ export async function createReceiptsExcel(
       to: { row: Math.max(1, sheet.rowCount), column: table.headers.length },
     };
     sheet.columns.forEach((col, i) => {
+      if (["Código do Cliente", "Nº do Boleto"].includes(table.headers[i])) col.numFmt = "@";
       col.width =
         table.name === "Resumo Financeiro"
           ? i === 0

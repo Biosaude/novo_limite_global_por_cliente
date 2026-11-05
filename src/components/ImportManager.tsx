@@ -448,7 +448,7 @@ export function ImportManager({
                         : ""}
                       <select
                         aria-label={`${label} ${sheet.name}`}
-                        value={map.fields[key as keyof Mapping["fields"]]}
+                        value={map.fields[key as keyof Mapping["fields"]] ?? -1}
                         disabled={busy}
                         onChange={(event) =>
                           update({

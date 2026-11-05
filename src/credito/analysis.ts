@@ -8,6 +8,7 @@ import type {
 import { dateValue, cutoff, daysBetween } from "../domain/dates";
 import { sum } from "../domain/money";
 import { scalar, normalized, cellText } from "../importacao/mapping";
+import { clientIdentity, clientLabel, matchesClient } from "../domain/clients";
 import type {
   CreditClient,
   CreditConfig,
@@ -142,7 +143,7 @@ export function analyzeCredit(
     : new Decimal(0);
   const grouped = new Map<string, FinancialRecord[]>();
   for (const row of all) {
-    const key = clientKey(row.client) || `SEM-IDENTIFICACAO:${row.id}`;
+    const key = row.clientCode ? clientIdentity(row) : clientKey(row.client) || `SEM-IDENTIFICACAO:${row.id}`;
     const entries = grouped.get(key) ?? [];
     entries.push(row);
     grouped.set(key, entries);
@@ -155,7 +156,7 @@ export function analyzeCredit(
   return [...grouped]
     .filter(
       ([key, rows]) =>
-        (!filters.client || key === clientKey(filters.client)) &&
+        (!filters.client || (rows[0].clientCode ? matchesClient(rows[0], filters.client) : key === clientKey(filters.client))) &&
         (!filters.representative ||
           rows.some(
             (row) =>
@@ -276,7 +277,7 @@ export function analyzeCredit(
       }
       const reasons: string[] = [],
         warnings: string[] = [
-          "Identificação apenas por nome: não há CNPJ ou código único. A correspondência exata não comprova identidade jurídica.",
+          rows[0].clientCode ? "Consolidação pelo código do cliente no contexto da empresa/posição importada." : "Identificação apenas por nome: não há CNPJ ou código único. A correspondência exata não comprova identidade jurídica.",
           "Histórico de recebimentos não comprova faturamento completo, cobertura contínua ou quitação integral dos títulos.",
         ];
       const variants = [
@@ -284,7 +285,7 @@ export function analyzeCredit(
       ];
       if (variants.length > 1)
         warnings.push(
-          `${variants.length} grafias foram consolidadas somente por espaços e capitalização; confira possíveis homônimos.`,
+          rows[0].clientCode ? `${variants.length} nomes consolidados pelo mesmo código e contexto de empresa; nomes originais preservados.` : `${variants.length} grafias foram consolidadas somente por espaços e capitalização; confira possíveis homônimos.`,
         );
       const badMoney =
         rows
@@ -496,7 +497,7 @@ export function analyzeCredit(
         );
       return {
         key,
-        name: rows[0].client.trim().replace(/\s+/g, " ") || "Sem identificação",
+        name: rows[0].clientCode ? clientLabel(rows[0]) : rows[0].client.trim().replace(/\s+/g, " ") || "Sem identificação",
         variants,
         representatives: [
           ...new Set(

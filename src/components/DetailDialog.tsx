@@ -26,7 +26,7 @@ export function DetailDialog({
     return () => dialog.close();
   }, []);
   const matched = records.filter((record) =>
-    `${record.title} ${record.client} ${record.representative}`
+    `${record.title} ${record.client} ${record.clientCode || ""} ${record.boleto || ""} ${record.representative}`
       .toLocaleLowerCase("pt-BR")
       .includes(query.toLocaleLowerCase("pt-BR")),
   );
@@ -63,7 +63,7 @@ export function DetailDialog({
         </button>
       </div>
       <label>
-        Pesquisar título, cliente ou representante
+        Pesquisar título, cliente, código, boleto ou representante
         <input
           type="search"
           value={query}
@@ -86,6 +86,8 @@ export function DetailDialog({
                 "Vencimento",
                 "Recebimento",
                 "Origem",
+                "Código do Cliente",
+                "Nº do Boleto",
               ].map((label) => (
                 <th key={label}>{label}</th>
               ))}
@@ -111,6 +113,8 @@ export function DetailDialog({
                     Linha {record.row}: ver original
                   </button>
                 </td>
+                <td>{record.clientCode || "Não informado"}</td>
+                <td>{record.boleto || "Boleto não informado"}</td>
               </tr>
             ))}
           </tbody>

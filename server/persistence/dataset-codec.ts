@@ -46,6 +46,7 @@ export function validateDataset(value: unknown): Dataset {
         !text(r.title) ||
         !text(r.representative) ||
         !text(r.sheet) ||
+        ![r.clientCode, r.boleto, r.companyCode].every(v => v === undefined || text(v)) ||
         !Number.isSafeInteger(r.row) ||
         r.row < 1 ||
         !(r.cents === null || Number.isSafeInteger(r.cents)) ||

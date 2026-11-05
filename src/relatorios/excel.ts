@@ -135,8 +135,10 @@ export async function createCollectionExcel(
       "Aba de origem",
       "Linha de origem",
       "Observações",
+      "Código do Cliente",
+      "Nº do Boleto",
     ],
-    [44, 32, 18, 12, 25, 16, 16, 16, 27, 20, 18, 22, 27, 40, 40, 38, 16, 65],
+    [44, 32, 18, 12, 25, 16, 16, 16, 27, 20, 18, 22, 27, 40, 40, 38, 16, 65, 22, 28],
   );
   addRows(
     details,
@@ -161,11 +163,15 @@ export async function createCollectionExcel(
       row.record.sheet,
       row.record.row,
       row.observations,
+      row.record.clientCode || "Não informado",
+      row.record.boleto || "Boleto não informado",
     ]),
     [6, 7],
     [10, 11, 12],
   );
   const total = details.addRow(["Total selecionado"]);
+  details.getColumn(19).numFmt = "@";
+  details.getColumn(20).numFmt = "@";
   total.getCell(12).value = {
     formula: `SUM(L2:L${view.rows.length + 1})`,
     result: view.summary.totalOpen / 100,

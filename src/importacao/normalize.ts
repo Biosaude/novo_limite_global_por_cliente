@@ -6,12 +6,13 @@ import {
   type Mapping,
   type SourceWorkbook,
 } from "../domain/types";
-import { scalar, cellText, blank } from "./mapping";
+import { scalar, cellText, blank, normalized } from "./mapping";
 import { dateValue, validDate } from "../domain/dates";
 import { cents, sum } from "../domain/money";
 import { analyzeDayCell } from "./dayAnalysis";
 import { isDaysFormulaGuide } from "./daysFormula";
 import { audit } from "../auditoria/audit";
+import { identifier } from "./identifiers";
 export function normalize(
   source: SourceWorkbook,
   mappings: Mapping[],
@@ -36,12 +37,15 @@ export function normalize(
         ? ["client", "amount", "received"]
         : ["client", "amount"];
     for (const field of required) {
-      if (map.fields[field] < 0 || map.fields[field] >= sheet.columns)
+      if ((map.fields[field] ?? -1) < 0 || (map.fields[field] ?? -1) >= sheet.columns)
         throw new Error(
           `Selecione a coluna ${fieldLabels[field]} na aba “${sheet.name}”.`,
         );
     }
-    const selected = Object.values(map.fields).filter((index) => index >= 0);
+    const systemExport = header.cells.some(c => ["codigo", "codigocliente", "codcliente", "nrboleto", "numeroboleto", "numerodoboleto"].includes(normalized(cellText(c))));
+    if (systemExport && ((map.fields.clientCode ?? -1) < 0 || (map.fields.boleto ?? -1) < 0))
+      throw new Error(`Mapeie Código do Cliente e Nº do Boleto na aba “${sheet.name}”.`);
+    const selected = Object.values(map.fields).filter((index): index is number => index !== undefined && index >= 0);
     if (new Set(selected).size !== selected.length)
       throw new Error(
         `Uma coluna está mapeada para dois campos na aba “${sheet.name}”. Confira o mapeamento.`,
@@ -55,7 +59,7 @@ export function normalize(
       );
     for (const row of rows) {
       const get = (field: keyof Mapping["fields"]) =>
-        scalar(row.cells[map.fields[field]]);
+        scalar(row.cells[map.fields[field] ?? -1]);
       const id = `${sheet.name}:${row.number}`;
       const error = (code: string, message: string) =>
         issues.push({
@@ -81,6 +85,12 @@ export function normalize(
           `Data de recebimento ausente ou inválida; impossível determinar o Recebido YTD. Valor original: ${cellText(row.cells[map.fields.received]) || "(ausente)"}. Valor financeiro: ${String(get("amount") ?? "(ausente)")}.`,
         );
       const due = dateValue(get("due"), source.date1904);
+      const identifiers: { clientCode: string; boleto: string; companyCode: string } = { clientCode: "", boleto: "", companyCode: "" };
+      for (const field of ["clientCode", "boleto", "companyCode"] as const) {
+        try { identifiers[field] = identifier(get(field)); }
+        catch (e) { error("invalid_identifier", e instanceof Error ? e.message : "Identificador inválido."); }
+      }
+      if (systemExport && !identifiers.clientCode) error("missing_client_code", "Código do Cliente não informado.");
       const dayAnalysis = analyzeDayCell(sheet, map, row, due, reference);
       issues.push(...dayAnalysis.issues);
       records.push({
@@ -88,6 +98,7 @@ export function normalize(
         sheet: sheet.name,
         row: row.number,
         category: map.category,
+        ...identifiers,
         client: String(get("client") ?? "").trim(),
         title: String(get("title") ?? "").trim(),
         representative: String(get("representative") ?? "").trim(),

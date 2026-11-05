@@ -20,6 +20,9 @@ export interface SourceWorkbook {
   date1904: boolean;
 }
 export const fieldLabels = {
+  clientCode: "Código do Cliente",
+  boleto: "Nº do Boleto",
+  companyCode: "Código da Empresa (quando disponível)",
   client: "Cliente",
   title: "Título completo",
   representative: "Representante",
@@ -36,7 +39,8 @@ export interface Mapping {
   sheet: string;
   category: Category | "";
   header: number;
-  fields: Record<Field, number>;
+  fields: Record<Exclude<Field, "clientCode" | "boleto" | "companyCode">, number> &
+    Partial<Record<"clientCode" | "boleto" | "companyCode", number>>;
 }
 export interface DayCalculation {
   kind: "formula" | "numeric" | "empty" | "invalid-formula" | "invalid-value";
@@ -50,6 +54,10 @@ export interface FinancialRecord {
   row: number;
   category: Category;
   client: string;
+  /** Sempre presentes nas novas importações; opcionais para bases legadas sem código. */
+  clientCode?: string;
+  boleto?: string;
+  companyCode?: string;
   title: string;
   representative: string;
   cents: number | null;

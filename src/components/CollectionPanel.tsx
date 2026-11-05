@@ -147,6 +147,7 @@ export function CollectionPanel({
           <input
             type="search"
             aria-label="Pesquisar cliente na consulta"
+            placeholder="Código, nome ou boleto"
             value={query.clientSearch}
             onChange={(e) => update({ clientSearch: e.target.value })}
           />
@@ -276,6 +277,8 @@ export function CollectionPanel({
                 "Hospital",
                 "Plano de saúde",
                 "Origem / observações",
+                "Código do Cliente",
+                "Nº do Boleto",
               ].map((label) => (
                 <th key={label}>{label}</th>
               ))}
@@ -318,11 +321,13 @@ export function CollectionPanel({
                       {row.record.sheet} · linha {row.record.row}
                       {row.observations && <small>{row.observations}</small>}
                     </td>
+                    <td>{row.record.clientCode || "Não informado"}</td>
+                    <td>{row.record.boleto || "Boleto não informado"}</td>
                   </tr>
                 ))
             ) : (
               <tr>
-                <td colSpan={16}>
+                <td colSpan={18}>
                   Nenhum título em aberto corresponde à consulta. Revise
                   cliente, representante, categoria, pesquisas e faixas.
                 </td>
