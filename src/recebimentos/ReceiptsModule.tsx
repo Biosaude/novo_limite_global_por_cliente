@@ -5,6 +5,7 @@ import { displayDate } from "../domain/dates";
 import { money, percentage } from "../domain/money";
 import { EmptyState } from "../components/EmptyState";
 import { ReceiptCharts } from "./ReceiptCharts";
+import { clientOptions } from "../domain/clients";
 import {
   conditions,
   legalLabels,
@@ -178,7 +179,7 @@ export function ReceiptsModule({
           ])}
           {select("Cliente dos recebimentos", "client", [
             ["", "Todos"],
-            ...options("client").map((v) => [v, v] as [string, string]),
+            ...clientOptions(available.map(r => r.record)).map(v => [v.value, v.label] as [string, string]),
           ])}
           {select("Representante dos recebimentos", "representative", [
             ["", "Todos"],
@@ -416,7 +417,7 @@ export function ReceiptsModule({
                   type="search"
                   value={filters.search}
                   onChange={(e) => update("search", e.target.value)}
-                  placeholder="Cliente, representante, duplicata ou título"
+                  placeholder="Código, cliente, boleto, representante, duplicata ou título"
                 />
               </label>
               {select("Ordenar recebimentos", "sort", [
@@ -457,6 +458,8 @@ export function ReceiptsModule({
                       "Condição",
                       "Ajuizamento",
                       "Origem",
+                      "Código do Cliente",
+                      "Nº do Boleto",
                     ].map((c) => (
                       <th key={c}>{c}</th>
                     ))}
@@ -493,6 +496,8 @@ export function ReceiptsModule({
                         <td>
                           {r.record.sheet} · linha {r.record.row}
                         </td>
+                        <td>{r.record.clientCode || "Não informado"}</td>
+                        <td>{r.record.boleto || "Boleto não informado"}</td>
                       </tr>
                     ))}
                 </tbody>

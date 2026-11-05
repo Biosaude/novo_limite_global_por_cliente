@@ -33,6 +33,7 @@ import {
 } from "./domain/finance";
 import { displayDate, cutoff } from "./domain/dates";
 import { BaseHistory } from "./components/BaseHistory";
+import { clientOptions } from "./domain/clients";
 import { localRepository } from "./persistencia/repository";
 const ReceiptsModule = lazy(() =>
   import("./recebimentos/ReceiptsModule").then((module) => ({
@@ -180,12 +181,7 @@ export default function App() {
   );
   const summary = useMemo(() => totals(records), [records]);
   const allClients = useMemo(
-    () =>
-      [
-        ...new Set(
-          active?.records.map((record) => record.client || "Sem cliente") ?? [],
-        ),
-      ].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    () => clientOptions(active?.records ?? []),
     [active],
   );
   const allRepresentatives = useMemo(
@@ -482,7 +478,7 @@ export default function App() {
                     >
                       <option value="">Todos</option>
                       {allClients.map((client) => (
-                        <option key={client}>{client}</option>
+                        <option key={client.value} value={client.value}>{client.label}</option>
                       ))}
                     </select>
                   </label>

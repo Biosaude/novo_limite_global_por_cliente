@@ -34,6 +34,9 @@ export const normalized = (value: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 const aliases = {
+  clientCode: ["codigo", "codigocliente", "codcliente"],
+  boleto: ["nrboleto", "numeroboleto", "numerodoboleto"],
+  companyCode: ["codempresa", "codigoempresa", "codigodaempresa", "empresa"],
   client: ["nomecliente", "cliente", "razaosocial"],
   issued: ["dtemissao", "dataemissao", "emissao"],
   document: ["duplicata", "numerodaduplicata"],
@@ -90,7 +93,11 @@ export function suggestMappings(source: SourceWorkbook): Mapping[] {
             names.includes(normalized(cellText(cell))) ? index : -1,
           )
           .filter((index) => index !== -1);
-        return [field, indices.length === 1 ? indices[0] : -1];
+        // O exportador repete o nome: a coluna primária pertence a Cod.representante 1.
+        const primaryRepresentative = field === "representative" && indices.length > 1
+          ? indices.filter(index => normalized(cellText(best?.row.cells[index - 1])).match(/^cod(?:igo)?representante1$/))
+          : [];
+        return [field, indices.length === 1 ? indices[0] : primaryRepresentative.length === 1 ? primaryRepresentative[0] : -1];
       }),
     ) as Mapping["fields"];
     return { sheet: sheet.name, category, header, fields };

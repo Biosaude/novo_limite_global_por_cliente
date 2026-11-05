@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { createTemplate } from "../src/importacao/template";
+import { createTemplate } from "./legacy-template";
 export async function receiptsFixture(repeats = 1) {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await createTemplate());

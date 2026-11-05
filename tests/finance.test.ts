@@ -286,18 +286,18 @@ test("modelo Excel vazio conserva o esquema oficial e aceita preenchimento pelo 
   assert.deepEqual(
     workbook.worksheets.map((sheet) => sheet.name),
     [
-      "CONSOLIDADO - A VENCER (VA529)",
-      "CONSOLIDADO - VENCIDO (VA529)",
-      "CONSOLIDADO - RECEBIDO (VA527)",
+      "VENCIDO",
+      "A VENCER",
+      "RECEBIDO",
     ],
   );
   for (const [index, sheet] of workbook.worksheets.entries()) {
     assert.equal(
       sheet.actualRowCount,
-      index === 2 ? 1 : 2,
-      "modelo não deve conter registros simulados; F2 é orientação",
+      2,
+      "modelo não deve conter registros simulados; cabeçalho na linha 2",
     );
-    const values = sheet.getRow(1).values as unknown[];
+    const values = sheet.getRow(2).values as unknown[];
     const row = Array(sheet.columnCount).fill(null);
     const put = (header: string, value: unknown) => {
       const position = values.findIndex((item) => item === header);
@@ -305,13 +305,15 @@ test("modelo Excel vazio conserva o esquema oficial e aceita preenchimento pelo 
       row[position - 1] = value;
     };
     put("Nome cliente", "CLIENTE DE TESTE — MODELO");
+    put("Codigo", "00001");
+    put("Nr.boleto", "'000123456789012345");
     put("Nome representante", "REPRESENTANTE DE TESTE");
     put("Numero do titulo completo", `MODELO-${index}/01`);
     put("Vr.duplicata", 9999);
-    put(index === 2 ? "Vr.recebido" : "Vr.aberto", [1.01, 2.02, 3.03][index]);
+    put(index === 2 ? "Vr.recebido" : "Vr.aberto", [2.02, 1.01, 3.03][index]);
     put(
       "Dt.vencimento",
-      new Date(index === 0 ? "2026-10-29T00:00:00Z" : "2026-10-09T00:00:00Z"),
+      new Date(index === 1 ? "2026-10-29T00:00:00Z" : "2026-10-09T00:00:00Z"),
     );
     if (index === 2) put("Dt.recebimento", new Date("2026-10-10T00:00:00Z"));
     sheet.addRow(row);

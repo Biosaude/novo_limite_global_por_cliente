@@ -3,6 +3,7 @@ import { daysBetween, validDate } from "../domain/dates";
 import { sum } from "../domain/money";
 import { enrichCreditRecords } from "../credito/analysis";
 import { normalized, cellText, scalar } from "../importacao/mapping";
+import { clientIdentity, clientLabel, matchesClient, clientFilterLabel } from "../domain/clients";
 export const conditions = {
   early: "Antecipado",
   ontime: "Em dia",
@@ -159,10 +160,10 @@ export function summarize(rows: ReceiptRow[]): ReceiptSummary {
     titles: new Set(
       rows.map(
         (r) =>
-          `${key(r.client)}\0${r.document && r.installment ? r.document + "\0" + r.installment : r.title || r.record.id}`,
+          `${r.record.clientCode ? clientIdentity(r.record) : key(r.client)}\0${r.document && r.installment ? r.document + "\0" + r.installment : r.title || r.record.id}`,
       ),
     ).size,
-    clients: new Set(rows.map((r) => key(r.client))).size,
+    clients: new Set(rows.map((r) => r.record.clientCode ? clientIdentity(r.record) : key(r.client))).size,
     invalidAmounts: rows.filter((r) => r.cents === null).length,
     unknownCount: rows.filter((r) => r.condition === "unknown").length,
     negativeCount: rows.filter((r) => (r.cents ?? 0) < 0).length,
@@ -189,7 +190,7 @@ export function receiptView(
         (!filters.quarter ||
           Math.ceil(Number(r.received!.slice(5, 7)) / 3) ===
             Number(filters.quarter)) &&
-        (!filters.client || key(r.client) === key(filters.client)) &&
+        (!filters.client || (r.record.clientCode ? matchesClient(r.record, filters.client) : key(r.client) === key(filters.client))) &&
         (!filters.representative ||
           key(r.representative) === key(filters.representative)) &&
         (!filters.condition || r.condition === filters.condition) &&
@@ -198,6 +199,8 @@ export function receiptView(
           key(
             [
               r.client,
+              r.record.clientCode || "",
+              r.record.boleto || "",
               r.representative,
               r.document,
               r.installment,
@@ -263,8 +266,8 @@ export function receiptView(
   const groups = (field: "client" | "representative") => {
     const map = new Map<string, { name: string; rows: ReceiptRow[] }>();
     for (const r of rows) {
-      const k = key(r[field]);
-      const group = map.get(k) ?? { name: r[field], rows: [] };
+      const k = field === "client" && r.record.clientCode ? clientIdentity(r.record) : key(r[field]);
+      const group = map.get(k) ?? { name: field === "client" ? clientLabel(r.record) : r[field], rows: [] };
       group.rows.push(r);
       map.set(k, group);
     }
@@ -293,7 +296,7 @@ export function receiptFilterLabels(view: ReceiptView): string[][] {
     ["Ano", f.year || "Todos"],
     ["Mês", f.month || "Todos"],
     ["Trimestre", f.quarter ? "Q" + f.quarter : "Todos"],
-    ["Cliente", f.client || "Todos"],
+    ["Cliente", clientFilterLabel(f.client) || "Todos"],
     ["Representante", f.representative || "Todos"],
     ["Condição", conditions[f.condition as Condition] || "Todas"],
     ["Ajuizamento", legalLabels[f.legal as Legal] || "Todos"],

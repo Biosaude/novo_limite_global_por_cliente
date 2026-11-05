@@ -266,6 +266,8 @@ export function CreditDetail({
                 "Recebimento",
                 "Valor financeiro",
                 "Origem",
+                "Código do Cliente",
+                "Nº do Boleto",
               ].map((label) => (
                 <th key={label}>{label}</th>
               ))}
@@ -293,6 +295,8 @@ export function CreditDetail({
                     {row.sheet} · linha {row.row}
                   </button>
                 </td>
+                <td>{row.clientCode || "Não informado"}</td>
+                <td>{row.boleto || "Boleto não informado"}</td>
               </tr>
             ))}
           </tbody>

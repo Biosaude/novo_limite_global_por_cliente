@@ -1,5 +1,6 @@
 import type { FinancialRecord, Issue } from "../domain/types";
 import { daysBetween } from "../domain/dates";
+import { clientIdentity } from "../domain/clients";
 export function audit(records: FinancialRecord[], reference: string): Issue[] {
   const issues: Issue[] = [];
   const titles = new Map<string, FinancialRecord[]>();
@@ -69,7 +70,7 @@ export function audit(records: FinancialRecord[], reference: string): Issue[] {
         );
     }
     if (record.title.trim() && record.client.trim()) {
-      const key = `${record.client.trim().toLocaleUpperCase("pt-BR")}\u0000${record.title.trim().toLocaleUpperCase("pt-BR")}`;
+      const key = `${record.clientCode ? clientIdentity(record) : record.client.trim().toLocaleUpperCase("pt-BR")}\u0000${record.title.trim().toLocaleUpperCase("pt-BR")}`;
       titles.set(key, [...(titles.get(key) ?? []), record]);
     }
   }
