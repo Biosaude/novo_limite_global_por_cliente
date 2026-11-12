@@ -326,6 +326,9 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
           status = 201;
         }
       }
+      // O proxy Vercel pode converter ETag forte em W/"n". O token numérico
+      // separado preserva o valor de revisão para If-Match sem depender do proxy.
+      res.setHeader("X-Biosaude-Revision", String(context.revision()));
       res.setHeader("ETag", `"${context.revision()}"`);
       return reply(status, output);
     } catch (error) {

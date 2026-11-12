@@ -123,14 +123,25 @@ export class FinancialHttpClient {
       this.assertActive();
       if (!value || typeof value !== "object" || Array.isArray(value)) throw new RemoteError("UNAVAILABLE");
       if (operation !== "validate") {
+        const rawRevision = response.headers.get("x-biosaude-revision");
         const etag = response.headers.get("etag");
-        if (!etag || !/^"(?:0|[1-9][0-9]{0,15})"$/.test(etag) || !Number.isSafeInteger(Number(etag.slice(1,-1))))
+        // O runtime Vercel pode enfraquecer o cabeçalho para W/"3".
+        // Nunca encaminhar W/ ao If-Match: ele requer revisão forte.
+        const match = etag?.match(/^(?:W\\/)?\"(0|[1-9][0-9]{0,15})\"$/);
+        const headerRevision = rawRevision !== null && /^(?:0|[1-9][0-9]{0,15})$/.test(rawRevision)
+          ? Number(rawRevision) : null;
+        const etagRevision = match ? Number(match[1]) : null;
+        if ((headerRevision === null && etagRevision === null) ||
+            (headerRevision !== null && !Number.isSafeInteger(headerRevision)) ||
+            (etagRevision !== null && !Number.isSafeInteger(etagRevision)) ||
+            (headerRevision !== null && etagRevision !== null && headerRevision !== etagRevision))
           throw new RemoteError("UNAVAILABLE");
-        if (!write && this.revision !== null && etag !== this.revision) {
+        const canonical = `"${headerRevision ?? etagRevision}"`;
+        if (!write && this.revision !== null && canonical !== this.revision) {
           this.blocked = true;
           throw new RemoteError("REVISION_CONFLICT");
         }
-        this.revision = etag;
+        this.revision = canonical;
       }
       return value;
     } catch (error) {
