@@ -326,6 +326,26 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
       res.setHeader("ETag", `"${context.revision()}"`);
       return reply(status, output);
     } catch (error) {
+      // Sem exposição de credenciais, mensagens de banco ou dados pessoais.
+      // Distingue erros de configuração dos erros de consulta apenas no Preview.
+      if (req.method === "GET" &&
+          new URL(req.url ?? "", "https://request.invalid").pathname === "/api/financial/active" &&
+          ["preview", "development"].includes(env.VERCEL_ENV ?? "")) {
+        const safeError = error instanceof ServerError
+          ? ({
+              DATABASE_URL_MISSING: "database_url_missing",
+              DATABASE_URL_INVALID: "database_url_invalid",
+              PUBLIC_DATABASE_URL_FORBIDDEN: "public_database_url_forbidden",
+              DATABASE_OPERATION_FAILED: "database_query_failed",
+              ACCESS_DENIED: "permission_denied",
+              IDENTITY_NOT_CONFIGURED: "identity_configuration",
+            } as Record<string, string>)[error.code] ?? "other_server_failure"
+          : "unexpected_failure";
+        console.warn(JSON.stringify({
+          event: "FINANCIAL_API_FAILURE",
+          category: safeError,
+        }));
+      }
       if (error instanceof ServerError && publicErrors.has(error.code)) {
         if (error.status === 401) res.setHeader("WWW-Authenticate", "Bearer");
         return reply(error.status, { code: error.code });
