@@ -127,7 +127,7 @@ export class FinancialHttpClient {
         const etag = response.headers.get("etag");
         // O runtime Vercel pode enfraquecer o cabeçalho para W/"3".
         // Nunca encaminhar W/ ao If-Match: ele requer revisão forte.
-        const match = etag?.match(/^(?:W\\/)?\"(0|[1-9][0-9]{0,15})\"$/);
+        const match = etag?.match(/^(?:W\/)?"(0|[1-9][0-9]{0,15})"$/);
         const headerRevision = rawRevision !== null && /^(?:0|[1-9][0-9]{0,15})$/.test(rawRevision)
           ? Number(rawRevision) : null;
         const etagRevision = match ? Number(match[1]) : null;
