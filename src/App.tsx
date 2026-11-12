@@ -90,16 +90,25 @@ export default function App() {
     localRepository
       .load()
       .then(async (dataset) => {
-        const savedVersions = await localRepository.history();
-        if (alive) {
-          setVersions(savedVersions);
-          setDurableIds(savedVersions.map((version) => version.id));
-        }
+        // A base ativa é autoritativa. Uma falha na listagem do histórico
+        // não deve ocultar a base já recuperada do Neon.
         if (alive && dataset) {
           setActive(dataset);
           setRemembered(true);
           setFilters(initialFilters(dataset));
           setCollectionQuery(initialCollectionQuery);
+        }
+        try {
+          const savedVersions = await localRepository.history();
+          if (alive) {
+            setVersions(savedVersions);
+            setDurableIds(savedVersions.map((version) => version.id));
+          }
+        } catch {
+          if (alive) setStorageError(
+            "A base ativa foi consultada, mas o histórico de versões está indisponível. " +
+            "O histórico não foi apagado e nenhuma operação local foi executada."
+          );
         }
       })
       .catch((error) => {
