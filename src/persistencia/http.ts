@@ -2,6 +2,51 @@ import type { Dataset } from "../domain/types";
 import type { PolicyProposal } from "../credito/types";
 import type { DatasetRepository, ProposalRepository } from "./contracts";
 import { refreshDayAnalysis } from "../importacao/dayAnalysis";
+import { gzipSync, gunzipSync, strToU8, strFromU8 } from "fflate";
+
+const MAX_JSON_BYTES = 32_000_000;
+const MAX_WIRE_BYTES = 3_000_000;
+const MARKER = "gzip-base64-v1";
+function base64Of(bytes: Uint8Array): string {
+  let text = "";
+  for (let offset = 0; offset < bytes.length; offset += 8192)
+    text += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+  return btoa(text);
+}
+function bytesOfBase64(value: string): Uint8Array {
+  const text = atob(value);
+  const result = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) result[i] = text.charCodeAt(i);
+  return result;
+}
+export function encodeLargeRequest(json: string): string {
+  const bytes = strToU8(json);
+  if (bytes.length <= MAX_WIRE_BYTES) return json;
+  if (bytes.length > MAX_JSON_BYTES) throw new RemoteError("PAYLOAD_TOO_LARGE");
+  const data = base64Of(gzipSync(bytes, { level: 6 }));
+  const wrapped = JSON.stringify({ __biosaude_transport: MARKER, data });
+  if (strToU8(wrapped).length > MAX_WIRE_BYTES) throw new RemoteError("PAYLOAD_TOO_LARGE");
+  return wrapped;
+}
+export function decodeLargeResponse(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new RemoteError("UNAVAILABLE");
+  const data = value as Record<string, unknown>;
+  if (!("__biosaude_transport" in data)) return data;
+  if (data.__biosaude_transport !== MARKER || Object.keys(data).length !== 2 ||
+      typeof data.data !== "string" || data.data.length > MAX_WIRE_BYTES)
+    throw new RemoteError("UNAVAILABLE");
+  try {
+    const decoded = gunzipSync(bytesOfBase64(data.data));
+    if (decoded.length > MAX_JSON_BYTES) throw Error("expanded response too large");
+    const parsed: unknown = JSON.parse(strFromU8(decoded));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      throw Error("invalid response");
+    return parsed as Record<string, unknown>;
+  } catch { throw new RemoteError("UNAVAILABLE"); }
+}
+
+
 
 export class RemoteError extends Error {
   constructor(public readonly code: string) {
@@ -9,7 +54,7 @@ export class RemoteError extends Error {
       ? "A organização foi atualizada em outra sessão. Recarregue a base antes de continuar."
       : code === "ACCESS_DENIED" ? "Sem permissão para esta operação na organização."
       : code === "UNAUTHENTICATED" ? "A sessão expirou. Entre novamente."
-      : code === "PAYLOAD_TOO_LARGE" ? "A base excede o limite de envio da API (3 MB de JSON)."
+      : code === "PAYLOAD_TOO_LARGE" ? "A base excede o limite seguro mesmo após compactação (3 MB por requisição)."
       : code === "NOT_FOUND" ? "API financeira indisponível ou desabilitada neste ambiente."
       : "Não foi possível concluir a operação remota. Recarregue antes de tentar novamente.");
   }
@@ -40,7 +85,8 @@ export class FinancialHttpClient {
     // Escritas concorrentes no mesmo cliente são recusadas, nunca repetidas automaticamente.
     if (this.busy) throw new RemoteError("REVISION_CONFLICT");
     if (write && this.revision === null) throw new RemoteError("PRECONDITION_REQUIRED");
-    const json = body === undefined ? undefined : JSON.stringify(body);
+    const json = body === undefined ? undefined :
+      (operation === "imports" || operation === "validate" ? encodeLargeRequest(JSON.stringify(body)) : JSON.stringify(body));
     if (json && new TextEncoder().encode(json).length > 3_000_000) throw new RemoteError("PAYLOAD_TOO_LARGE");
     if (write) this.busy = true;
     try {
@@ -73,7 +119,7 @@ export class FinancialHttpClient {
           : response.status === 409 || response.status === 428 ? "REVISION_CONFLICT" : "UNAVAILABLE");
       }
       if (!response.headers.get("content-type")?.includes("application/json")) throw new RemoteError("UNAVAILABLE");
-      const value = await response.json();
+      const value = decodeLargeResponse(await response.json());
       this.assertActive();
       if (!value || typeof value !== "object" || Array.isArray(value)) throw new RemoteError("UNAVAILABLE");
       if (operation !== "validate") {

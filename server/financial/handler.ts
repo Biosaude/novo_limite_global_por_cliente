@@ -19,6 +19,7 @@ import {
 } from "./import-input.js";
 import type { PolicyProposal } from "../../src/credito/types.js";
 import { getDiagnostic, type FinancialGetLogger } from "./get-diagnostics.js";
+import { decodeImportEnvelope, encodeFinancialResponse } from "./payload.js";
 export interface FinancialRequest {
   method?: string;
   url?: string;
@@ -86,7 +87,13 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
       if (identityVerified && status === 400 && entry)
         res.setHeader("X-Biosaude-Get-Diagnostic", JSON.stringify(entry));
       res.statusCode = status;
-      return res.end(JSON.stringify(body));
+      try {
+        const output = status === 200 && req.method === "GET" ? encodeFinancialResponse(body) : body;
+        return res.end(JSON.stringify(output));
+      } catch {
+        res.statusCode = 503;
+        return res.end(JSON.stringify({ code: "FINANCIAL_API_UNAVAILABLE" }));
+      }
     };
     const env = dependencies.environment ?? process.env;
     if (
@@ -140,14 +147,21 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
           : operation === "version"
             ? ["versionId"]
             : [];
-      for (const key of url.searchParams.keys())
-        if (
-          !allowedQuery.includes(key) ||
-          url.searchParams.getAll(key).length !== 1
-        ) {
-          diagnostic.reject(url.searchParams.getAll(key).length !== 1 ? "query_duplicate" : "query_unexpected");
+      // Vercel may mirror the dynamic [operation] parameter in req.url.
+      // Accept it only once when it exactly matches the resolved route
+      // and the runtime's req.query.operation; reject all other extras.
+      const runtimeOperation = req.query && typeof req.query === "object" &&
+        !Array.isArray(req.query)
+        ? (req.query as Record<string, unknown>).operation : undefined;
+      for (const key of url.searchParams.keys()) {
+        const values = url.searchParams.getAll(key);
+        const routeParameter = key === "operation" && values.length === 1 &&
+          values[0] === operation && runtimeOperation === operation;
+        if (values.length !== 1 || (!allowedQuery.includes(key) && !routeParameter)) {
+          diagnostic.reject(values.length !== 1 ? "query_duplicate" : "query_unexpected");
           throw badInput();
         }
+      }
       const matchHeader = req.headers["if-match"];
       const revision =
         typeof matchHeader === "string" &&
@@ -241,7 +255,7 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
             "Confirmação explícita necessária.",
             400,
           );
-        const dataset = normalizeImport(body);
+        const dataset = normalizeImport(decodeImportEnvelope(body));
         if (operation === "validate")
           return reply(200, {
             valid: !dataset.issues.some((i) => i.severity === "error"),

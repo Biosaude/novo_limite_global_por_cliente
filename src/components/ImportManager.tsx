@@ -301,7 +301,7 @@ export function ImportManager({
               automaticamente quando o mapeamento é reconhecido.
             </p>
             <small>
-              {remote ? "Leitura local do Excel; conteúdo validado é enviado à API (até 3 MB de JSON)." : "Até 20 MB. Processamento no próprio navegador, sem envio do arquivo."} {busy ? "Processando…" : filename}
+              {remote ? "Leitura local do Excel; envio compactado à API quando necessário (até 3 MB por requisição)." : "Até 20 MB. Processamento no próprio navegador, sem envio do arquivo."} {busy ? "Processando…" : filename}
             </small>
           </div>
           <label className="date-field">

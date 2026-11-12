@@ -130,7 +130,7 @@ export function normalizeImport(value: unknown): Dataset {
         input.filename,
       ),
     );
-    if (Buffer.byteLength(JSON.stringify(dataset), "utf8") > 3_000_000)
+    if (Buffer.byteLength(JSON.stringify(dataset), "utf8") > 32_000_000)
       throw new ServerError("PAYLOAD_TOO_LARGE", "Carga excede o limite.", 413);
     return dataset;
   } catch (error) {
