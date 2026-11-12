@@ -8,13 +8,16 @@ import { PersistenceContext, type Persistence } from "../persistencia/context";
 import { createLocalRepositories } from "../persistencia/repository";
 
 type User = { id: string; email: string };
+const BIOSAUDE_WORKSPACE_ID = "fa76845b-235f-48fc-a609-81134636f5b5";
+const organizationLabel = (workspace: string) => workspace.toLowerCase() === BIOSAUDE_WORKSPACE_ID ? "Biosaude" : workspace;
+const organizationId = (name: string) => name.trim().toLowerCase() === "biosaude" ? BIOSAUDE_WORKSPACE_ID : name;
 const workspacePattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 export function Access({returned}: {returned: AccessReturn}) {
   const [accessStep,setAccessStep] = useState<AccessStep | null>(returned.step);
   const [accessMessage,setAccessMessage] = useState(returned.message);
   const [user,setUser] = useState<User | null>(null), [loading,setLoading] = useState(true);
   const [email,setEmail] = useState(""), [password,setPassword] = useState("");
-  const [workspace,setWorkspace] = useState(import.meta.env.VITE_FINANCIAL_WORKSPACE_ID ?? "");
+  const [workspace,setWorkspace] = useState(import.meta.env.VITE_FINANCIAL_WORKSPACE_ID ?? BIOSAUDE_WORKSPACE_ID);
   const [selected,setSelected] = useState(""), [error,setError] = useState(""), [busy,setBusy] = useState(false);
   const [generation,setGeneration] = useState(0), [local,setLocal] = useState(false);
   const version = useRef(0);
@@ -103,10 +106,10 @@ export function Access({returned}: {returned: AccessReturn}) {
   const current=local ? fallback?.scope===JSON.stringify([user.id,selected]) ? fallback.value : null : persistence;
   return <>
     <div className="panel table-controls" aria-label="Sessão e organização" style={{margin:16,padding:12}}>
-      <span>{user.email} · {selected ? local ? "Modo local isolado — sem sincronização" : "Neon — organização selecionada" : "Selecione a organização autorizada"}</span>
+      <span>{user.email} · {selected ? local ? "Modo local isolado — sem sincronização" : `Neon — ${organizationLabel(selected)}` : "Selecione a organização autorizada"}</span>
       <form onSubmit={e=>{e.preventDefault(); if (!workspacePattern.test(workspace)) {setError("Informe um identificador de organização válido.");return;}
         version.current++;setLocal(false);setSelected(workspace.toLowerCase());setGeneration(x=>x+1);setError("");}}>
-        <label>Organização<input aria-label="Identificador da organização" value={workspace} required onChange={e=>setWorkspace(e.target.value)} /></label>
+        <label>Organização<input aria-label="Organização" value={organizationLabel(workspace)} required onChange={e=>setWorkspace(organizationId(e.target.value))} /></label>
         <button className="secondary" disabled={busy}>Abrir organização</button>
       </form>
       {selected && <button className="secondary" onClick={()=>{version.current++;setGeneration(x=>x+1);setError("");}}>Recarregar base</button>}
