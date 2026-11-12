@@ -249,13 +249,16 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
           output = { activated: true };
         }
       } else if (operation === "imports" || operation === "validate") {
-        if (operation === "imports" && object(body).confirm !== true)
+        // A confirmação pertence ao JSON original, não ao envelope gzip.
+        // Autorização e limite de tamanho já foram verificados antes de expandir.
+        const input = decodeImportEnvelope(body);
+        if (operation === "imports" && object(input).confirm !== true)
           throw new ServerError(
             "IMPORT_NOT_CONFIRMED",
             "Confirmação explícita necessária.",
             400,
           );
-        const dataset = normalizeImport(decodeImportEnvelope(body));
+        const dataset = normalizeImport(input);
         if (operation === "validate")
           return reply(200, {
             valid: !dataset.issues.some((i) => i.severity === "error"),
