@@ -1,4 +1,4 @@
-import { ServerError } from "./errors";
+import { ServerError } from "./errors.js";
 export type ServerEnvironment = Readonly<Record<string, string | undefined>>;
 export function assertServerOnly() {
   if (

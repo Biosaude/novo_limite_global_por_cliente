@@ -4,18 +4,18 @@ import type {
   FinancialRecord,
   Filters,
   RawCell,
-} from "../domain/types";
-import { dateValue, cutoff, daysBetween } from "../domain/dates";
-import { sum } from "../domain/money";
-import { scalar, normalized, cellText } from "../importacao/mapping";
+} from "../domain/types.js";
+import { dateValue, cutoff, daysBetween } from "../domain/dates.js";
+import { sum } from "../domain/money.js";
+import { scalar, normalized, cellText } from "../importacao/mapping.js";
 import type {
   CreditClient,
   CreditConfig,
   CreditGovernance,
   ObservedRisk,
   Risk,
-} from "./types";
-import { proposedConfig, validateConfig } from "./policy";
+} from "./types.js";
+import { proposedConfig, validateConfig } from "./policy.js";
 export const clientKey = (name: string) =>
   name.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR");
 /** Recupera campos adicionados nesta versão sem exigir reimportação das bases locais antigas. */

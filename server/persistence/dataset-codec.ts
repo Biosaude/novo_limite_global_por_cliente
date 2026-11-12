@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import type { Dataset } from "../../src/domain/types";
-import { validDate } from "../../src/domain/dates";
-import { ServerError } from "../errors";
+import type { Dataset } from "../../src/domain/types.js";
+import { validDate } from "../../src/domain/dates.js";
+import { ServerError } from "../errors.js";
 const invalid = () =>
   new ServerError(
     "DATASET_INVALID",

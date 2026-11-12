@@ -1,14 +1,14 @@
-import { normalize } from "../../src/importacao/normalize";
+import { normalize } from "../../src/importacao/normalize.js";
 import {
   fieldLabels,
   type Dataset,
   type Mapping,
   type RawCell,
   type SourceWorkbook,
-} from "../../src/domain/types";
-import { validDate } from "../../src/domain/dates";
-import { validateDataset } from "../persistence/dataset-codec";
-import { ServerError } from "../errors";
+} from "../../src/domain/types.js";
+import { validDate } from "../../src/domain/dates.js";
+import { validateDataset } from "../persistence/dataset-codec.js";
+import { ServerError } from "../errors.js";
 export const badInput = () =>
   new ServerError("INVALID_INPUT", "Entrada inválida.", 400);
 export function object(value: unknown): Record<string, unknown> {

@@ -3,9 +3,10 @@ import type { Dataset } from "../domain/types";
 import type { PolicyProposal } from "../credito/types";
 import type {DatasetRepository,ProposalRepository} from "./contracts";
 export type {DatasetRepository,ProposalRepository} from "./contracts";
+export function createLocalRepositories(name = "biosaude-financeiro") {
 async function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("biosaude-financeiro", 2);
+    const request = indexedDB.open(name, 2);
     request.onupgradeneeded = () => {
       for (const name of ["datasets", "versions", "credit-proposals"])
         if (!request.result.objectStoreNames.contains(name))
@@ -70,7 +71,7 @@ function valid(dataset: Dataset | undefined): Dataset | null {
     throw new Error("A base local não é compatível. Reimporte a planilha.");
   return refreshDayAnalysis(dataset);
 }
-export const localRepository: DatasetRepository = {
+const datasets: DatasetRepository = {
   async load() {
     return transaction(["datasets"], "readonly", (tx) => {
       const req = tx.objectStore("datasets").get("active");
@@ -123,7 +124,7 @@ export const localRepository: DatasetRepository = {
     });
   },
 };
-export const proposalRepository: ProposalRepository = {
+const proposals: ProposalRepository = {
   async list(): Promise<PolicyProposal[]> {
     return transaction(["credit-proposals"], "readonly", (tx) => {
       const req = tx.objectStore("credit-proposals").getAll();
@@ -140,3 +141,9 @@ export const proposalRepository: ProposalRepository = {
     });
   },
 };
+
+return { datasets, proposals };
+}
+const legacy = createLocalRepositories();
+export const localRepository = legacy.datasets;
+export const proposalRepository = legacy.proposals;

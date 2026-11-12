@@ -1,14 +1,14 @@
-import { assertServerOnly, type ServerEnvironment } from "../config";
-import { createDatabase, type ScopedDatabase } from "../db/client";
-import { ServerError } from "../errors";
-import { PostgresDatasetRepository } from "../persistence/postgres-datasets";
-import { PostgresProposalRepository } from "../persistence/postgres-proposals";
+import { assertServerOnly, type ServerEnvironment } from "../config.js";
+import { createDatabase, type ScopedDatabase } from "../db/client.js";
+import { ServerError } from "../errors.js";
+import { PostgresDatasetRepository } from "../persistence/postgres-datasets.js";
+import { PostgresProposalRepository } from "../persistence/postgres-proposals.js";
 import {
   createIdentityVerifier,
   type IdentityVerifier,
-} from "../security/identity";
-import { financialContext } from "../security/financial-context";
-import type { Permission } from "../security/authorization";
+} from "../security/identity.js";
+import { financialContext } from "../security/financial-context.js";
+import type { Permission } from "../security/authorization.js";
 import {
   badInput,
   exact,
@@ -16,13 +16,15 @@ import {
   object,
   reviewInput,
   versionId,
-} from "./import-input";
-import type { PolicyProposal } from "../../src/credito/types";
+} from "./import-input.js";
+import type { PolicyProposal } from "../../src/credito/types.js";
+import { getDiagnostic, type FinancialGetLogger } from "./get-diagnostics.js";
 export interface FinancialRequest {
   method?: string;
   url?: string;
   headers: Record<string, string | string[] | undefined>;
   body?: unknown;
+  query?: unknown;
 }
 export interface FinancialResponse {
   statusCode: number;
@@ -33,6 +35,7 @@ interface Dependencies {
   environment?: ServerEnvironment;
   identity?: IdentityVerifier;
   database?: ScopedDatabase;
+  diagnostic?: FinancialGetLogger;
 }
 const routes: Record<string, Record<string, Permission>> = {
   active: {
@@ -74,7 +77,14 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
     res.setHeader("Vercel-CDN-Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Vary", "Authorization, X-Workspace-Id");
+    let diagnostic: ReturnType<typeof getDiagnostic> | undefined;
+    let identityVerified = false;
     const reply = (status: number, body: unknown) => {
+      const entry = diagnostic?.finish(status);
+      // Only sanitized metadata about this request; never financial data or raw input.
+      // Production/disabled routes never create a diagnostic; failed JWTs never receive the header.
+      if (identityVerified && status === 400 && entry)
+        res.setHeader("X-Biosaude-Get-Diagnostic", JSON.stringify(entry));
       res.statusCode = status;
       return res.end(JSON.stringify(body));
     };
@@ -84,7 +94,9 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
       !["preview", "development"].includes(env.VERCEL_ENV ?? "")
     )
       return reply(404, { code: "NOT_FOUND" });
+    diagnostic = getDiagnostic(req, dependencies.diagnostic);
     try {
+      diagnostic.phase("identity");
       if (
         typeof req.headers.authorization !== "string" ||
         !req.headers.authorization.startsWith("Bearer ")
@@ -96,6 +108,8 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
         );
       identity ??= dependencies.identity ?? createIdentityVerifier(env);
       const verified = await identity.verify(req.headers.authorization);
+      identityVerified = true;
+      diagnostic.phase("validation");
       const url = new URL(req.url ?? "", "https://request.invalid");
       const match = /^\/api\/financial\/([a-z]+)$/.exec(url.pathname);
       const operation = match?.[1] ?? "";
@@ -116,8 +130,10 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
           workspace,
         )
-      )
+      ) {
+        diagnostic.reject("workspace_header");
         throw badInput();
+      }
       const allowedQuery =
         operation === "versions"
           ? ["limit", "offset"]
@@ -128,8 +144,10 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
         if (
           !allowedQuery.includes(key) ||
           url.searchParams.getAll(key).length !== 1
-        )
+        ) {
+          diagnostic.reject(url.searchParams.getAll(key).length !== 1 ? "query_duplicate" : "query_unexpected");
           throw badInput();
+        }
       const matchHeader = req.headers["if-match"];
       const revision =
         typeof matchHeader === "string" &&
@@ -154,7 +172,9 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
         revision,
       );
       // Autoriza antes de ler/normalizar a carga; nova verificação dentro da transação de persistência.
+      diagnostic.phase("authorization");
       await context.gate.authorize(permission);
+      diagnostic.phase("body");
       const repo = new PostgresDatasetRepository(context.db, context.gate);
       let body: unknown;
       if (["POST", "PUT", "PATCH"].includes(req.method ?? "")) {
@@ -182,12 +202,29 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
         } catch {
           throw badInput();
         }
-      } else if (req.body !== undefined && req.body !== null && req.body !== "")
-        throw badInput();
+      } else {
+        const received = req.body;
+        diagnostic.body(received);
+        // Node/serverless parsers can represent a bodyless GET as a zero-byte Buffer.
+        const empty = received === undefined || received === null || received === "" ||
+          (req.method === "GET" && Buffer.isBuffer(received) && received.length === 0);
+        // Parsed null/empty values must not hide bytes declared on the wire.
+        const framedGet = req.method === "GET" && (
+          (req.headers["content-length"] !== undefined && req.headers["content-length"] !== "0") ||
+          req.headers["transfer-encoding"] !== undefined
+        );
+        if (!empty || framedGet) {
+          diagnostic.reject(!empty ? "body_nonempty" : "body_framing");
+          throw badInput();
+        }
+      }
       let output: unknown;
       let status = 200;
       if (operation === "active") {
-        if (req.method === "GET") output = { dataset: await repo.load() };
+        if (req.method === "GET") {
+          diagnostic.phase("load");
+          output = { dataset: await repo.load() };
+        }
         else if (req.method === "DELETE") {
           await repo.clear();
           output = { deactivated: true };

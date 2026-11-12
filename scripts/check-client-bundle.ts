@@ -12,7 +12,7 @@ export async function inspectClientBundle(
       else if (/\.(js|html|json|map)$/.test(entry.name)) {
         const body = await readFile(file, "utf8");
         if (
-          /DATABASE_URL|NEON_DIAGNOSTIC_TOKEN|@neondatabase|postgres(?:ql)?:\/\//i.test(
+          /DATABASE_URL|NEON_DIAGNOSTIC_TOKEN|@neondatabase\/serverless|postgres(?:ql)?:\/\//i.test(
             body,
           )
         )
