@@ -48,9 +48,12 @@ export function normalizeImport(value: unknown): Dataset {
     )
       throw badInput();
     const names = new Set<string>();
+    // Limite de células alinhado ao leitor de Excel. A profundidade e
+    // complexidade de valores aninhados são limitadas separadamente.
     let cells = 0;
+    let nodes = 0;
     function cell(value: unknown, depth = 0): value is RawCell {
-      if (++cells > 250000 || depth > 8) throw badInput();
+      if (++nodes > 4_000_000 || depth > 8) throw badInput();
       if (value === null || typeof value === "boolean") return true;
       if (typeof value === "string") return value.length <= 20000;
       if (typeof value === "number") return Number.isFinite(value);
@@ -88,9 +91,11 @@ export function normalizeImport(value: unknown): Dataset {
           Number(row.number) < 1 ||
           numbers.has(Number(row.number)) ||
           !Array.isArray(row.cells) ||
-          row.cells.length > Number(sheet.columns) ||
-          !row.cells.every((v) => cell(v))
+          row.cells.length > Number(sheet.columns)
         )
+          throw badInput();
+        cells += row.cells.length;
+        if (cells > 2_000_000 || !row.cells.every((v) => cell(v)))
           throw badInput();
         numbers.add(Number(row.number));
       }
