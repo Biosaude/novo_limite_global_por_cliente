@@ -1,4 +1,5 @@
 import { assertServerOnly, type ServerEnvironment } from "../config.js";
+import { remoteEnvironmentAllowed } from "../production-gates.js";
 import { createDatabase, type ScopedDatabase } from "../db/client.js";
 import { ServerError } from "../errors.js";
 import { PostgresDatasetRepository } from "../persistence/postgres-datasets.js";
@@ -65,7 +66,7 @@ const publicErrors = new Set([
   "VERSION_NOT_FOUND",
   "PAYLOAD_TOO_LARGE",
 ]);
-/** Fail-closed: desabilitado por padrão e sempre indisponível em Production nesta etapa. */
+/** Fail-closed: Production requires two independent server flags, including FINANCIAL_PRODUCTION_ENABLED. */
 export function createFinancialHandler(dependencies: Dependencies = {}) {
   let identity: IdentityVerifier | undefined;
   const database =
@@ -98,7 +99,7 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
     const env = dependencies.environment ?? process.env;
     if (
       env.FINANCIAL_API_ENABLED !== "true" ||
-      !["preview", "development"].includes(env.VERCEL_ENV ?? "")
+      !remoteEnvironmentAllowed(env)
     )
       return reply(404, { code: "NOT_FOUND" });
     diagnostic = getDiagnostic(req, dependencies.diagnostic);

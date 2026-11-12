@@ -1,4 +1,5 @@
 import type { ServerEnvironment } from "../config.js";
+import { remoteEnvironmentAllowed } from "../production-gates.js";
 import type { FinancialRequest, FinancialResponse } from "../financial/handler.js";
 import { isConfigurationError, isRateLimit, logAuthDiagnostic, providerErrorCode, type AuthDiagnosticLogger } from "./diagnostics.js";
 const methods: Record<string,string> = { "sign-in/email": "POST", "sign-out": "POST", "get-session": "GET", token: "GET",
@@ -18,7 +19,7 @@ export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fe
       if (logoutCookies.length) (res.setHeader as (name:string,value:unknown)=>unknown)("Set-Cookie",logoutCookies);
       res.statusCode=status; res.end(JSON.stringify(value)); };
     const config = env ?? process.env;
-    if (!["preview","development"].includes(config.VERCEL_ENV ?? ""))
+    if (!remoteEnvironmentAllowed(config))
       return reply(404,{ code:"AUTH_DISABLED", message:"Autenticação indisponível neste ambiente." });
     const report = (status: number | null, code: string) => {
       try { log({ status, code }); } catch { /* Logging failures must not alter authentication. */ }
