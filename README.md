@@ -174,6 +174,8 @@ Ajuizamento é complementar às categorias de prazo. Sem coluna confiável, most
 
 ## Preparação Neon PostgreSQL — Etapa 1
 
+Para a preparação atual do login existente em Production, consulte [Login único Neon Auth](docs/LOGIN_UNICO_PRODUCTION.md). Auth, recuperação e verificação de e-mail têm habilitação independente das APIs financeiras; nenhuma configuração remota ou migração é executada por essa preparação.
+
 Backend exclusivo do servidor, driver Neon preguiçoso, `.env.example` sem credenciais, migrações SQL versionadas e adaptadores dos contratos existentes foram preparados. **IndexedDB continua ativo.** Definir `DATABASE_URL` não conecta automaticamente, não aplica DDL e não publica dados. A única rota nova é de saúde técnica; os repositórios do servidor negam acesso por padrão até a implementação de autenticação/autorização.
 
 - `npm run db:check`: verifica configuração e TLS, sem conexão e sem imprimir valores.

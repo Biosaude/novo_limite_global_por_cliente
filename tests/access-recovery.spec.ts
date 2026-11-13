@@ -1,6 +1,7 @@
 import {test,expect,type Page} from "@playwright/test";
 import {createAuthProxy} from "../server/auth/proxy";
-test.skip(process.env.REMOTE_E2E!=="true","Requer build remoto; serviço Auth simulado, sem e-mails reais.");
+const authOnly=process.env.AUTH_ONLY_E2E==="true";
+test.skip(process.env.REMOTE_E2E!=="true" && !authOnly,"Requer build Auth ou remoto; serviço Auth simulado, sem e-mails reais.");
 const email="synthetic@example.invalid",newPassword="synthetic-new-password";
 async function service(page:Page,options:{mail?:boolean;password?:string|null}={}){
  const state={password:options.password??null,verified:false,used:false,financial:0,mail:options.mail!==false,callback:"",resets:0};let signed=false;
@@ -45,7 +46,13 @@ test("primeiro acesso: conta sem senha define senha por link e verifica e-mail p
  await page.getByRole("button",{name:"Verificar meu e-mail",exact:true}).click();await page.getByLabel("E-mail",{exact:true}).fill(email);await page.getByRole("button",{name:"Enviar ou reenviar verificação"}).click();await expect(page.getByRole("status")).toContainText("Se o endereço estiver cadastrado");expect(state.callback).toBe("http://127.0.0.1:4173/?access=verified");
  await page.getByLabel("Código de verificação").fill("000000");await page.getByRole("button",{name:"Confirmar código"}).click();await expect(page.getByRole("alert")).toContainText("confirmar o código");
  await page.getByLabel("Código de verificação").fill("123456");await page.getByRole("button",{name:"Confirmar código"}).click();await expect(page.getByRole("status")).toContainText("E-mail verificado pelo serviço");
- await page.getByRole("button",{name:"Voltar ao login"}).click();await page.getByLabel("Senha",{exact:true}).fill(newPassword);await page.getByRole("button",{name:"Entrar",exact:true}).click();await expect(page.getByLabel("Identificador da organização")).toBeVisible();expect(state.financial).toBe(0);expect(errors).toEqual([]);
+ await page.getByRole("button",{name:"Voltar ao login"}).click();await page.getByLabel("Senha",{exact:true}).fill(newPassword);await page.getByRole("button",{name:"Entrar",exact:true}).click();
+ if(authOnly){
+  await expect(page.getByRole("status")).toContainText("Sessão confirmada");
+  await expect(page.getByRole("button",{name:"Abrir organização",exact:true})).toHaveCount(0);
+  await page.getByRole("button",{name:"Sair",exact:true}).click();await expect(page.getByRole("button",{name:"Entrar",exact:true})).toBeVisible();
+ } else await expect(page.getByLabel("Identificador da organização")).toBeVisible();
+ expect(state.financial).toBe(0);expect(errors).toEqual([]);
 });
 test("recuperação: link expirado ou reutilizado não define senha",async({page})=>{
  const state=await service(page);

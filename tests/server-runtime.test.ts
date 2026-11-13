@@ -62,7 +62,11 @@ test("serverless: JavaScript emitido carrega e executa todas as APIs em Node ESM
       process.env.AUTH_APP_ORIGIN = 'https://synthetic.vercel.app';
       const proxy = handlers.get('api/auth/proxy.js');
       let calls = 0;
-      for (const path of ['get-session', 'request-password-reset', 'send-verification-email']) {
+      for (const environment of ['preview', 'production']) {
+      process.env.VERCEL_ENV = environment;
+      process.env.AUTH_PRODUCTION_ENABLED = 'true';
+      process.env.FINANCIAL_PRODUCTION_ENABLED = 'false';
+      for (const path of ['get-session', 'request-password-reset', 'send-verification-email', 'email-otp/verify-email']) {
         send = async (url, init) => {
           calls++;
           assert.equal(String(url), process.env.NEON_AUTH_BASE_URL + '/' + path);
@@ -72,10 +76,11 @@ test("serverless: JavaScript emitido carrega e executa todas as APIs em Node ESM
         const res = response();
         await proxy({method:path==='get-session'?'GET':'POST', url:'/api/neon-auth/'+path,
           headers:{origin:process.env.AUTH_APP_ORIGIN, 'content-type':'application/json'},
-          body: {email:'synthetic@example.invalid'}}, res);
+          body: {email:'synthetic@example.invalid', ...(path==='email-otp/verify-email'?{otp:'123456'}:{})}}, res);
         assert.equal(res.statusCode, 200, path);
       }
-      assert.equal(calls, 3);
+      }
+      assert.equal(calls, 8);
       send = async () => {throw Error('Unexpected external network access');};
       const denied = response();
       await handlers.get('api/financial/[operation].js')({method:'GET', url:'/api/financial/active', headers:{}}, denied);

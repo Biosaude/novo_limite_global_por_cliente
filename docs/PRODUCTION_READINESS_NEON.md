@@ -3,10 +3,10 @@
 ## Escopo desta alteração
 Esta branch parte do Preview funcional da PR #19 e **não modifica Production**, o banco, o layout ou as regras financeiras. Só abre a possibilidade de utilizar as rotas remotas em Production quando habilitadas por **duas flags de servidor**:
 
-- `FINANCIAL_PRODUCTION_ENABLED=true` — autorização explícita para Production; ausente ou false mantém API e proxy Auth indisponíveis.
+- `FINANCIAL_PRODUCTION_ENABLED=true` — autorização explícita para dados em Production; ausente ou false mantém a API financeira indisponível.
 - `FINANCIAL_API_ENABLED=true` — ativa a API financeira; mesmo com a flag Production, ausente ou false retorna 404.
 
-A autenticação do proxy também exige `FINANCIAL_PRODUCTION_ENABLED=true`; não expõe rota de cadastro público pelo aplicativo, não provisiona memberships e não aceita JWT sem assinatura válida. Preview continua comportando-se como antes.
+A preparação posterior de [login único em Production](LOGIN_UNICO_PRODUCTION.md) separa o proxy Auth: ele exige `AUTH_PRODUCTION_ENABLED=true`, independentemente das duas flags financeiras. A interface usa `VITE_AUTH_ENABLED=true` para disponibilizar o mesmo login, recuperação e verificação antes dos dados. Preview continua comportando-se como antes. O proxy não expõe cadastro público nem provisiona memberships; a API financeira continua verificando a assinatura JWT e a autorização no servidor.
 
 ## Checklist obrigatório ANTES de promover ou mesclar
 
@@ -22,5 +22,5 @@ A autenticação do proxy também exige `FINANCIAL_PRODUCTION_ENABLED=true`; nã
 ## Restrições
 Este código **não** concede acesso financeiro a usuários recém-criados, não valida configuração efetiva da Vercel, não confirma entrega real de e-mail e não executa migrations. Os usuários criados na branch `desenvolvimento` não são automaticamente usuários de Production. Vercel Preview protegido por login da Vercel é uma camada distinta de Neon Auth.
 
-## Validação automatizada adicionada
-Testes para negar Production quando qualquer uma das duas flags financeiras faltar; quando explicitamente autorizada, o proxy de sessão consegue encaminhar GET de sessão, mas cadastro público continua bloqueado, e a API financeira continua rejeitando requisições sem JWT com 401, sem consulta ao banco.
+## Validação automatizada
+Testes negam a API financeira de Production quando qualquer flag financeira faltar. Auth exige sua própria habilitação explícita, mantendo cadastro público bloqueado. A API financeira habilitada continua rejeitando requisições sem JWT com 401, sem consulta ao banco. Consulte o documento de login único para a matriz independente de flags, workspace e validação de e-mail.
