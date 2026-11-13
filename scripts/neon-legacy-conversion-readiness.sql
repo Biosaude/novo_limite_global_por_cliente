@@ -2,6 +2,18 @@
 -- Execute EXCLUSIVAMENTE em homologacao-migracao-limite-global-20261113 / neondb.
 -- Nao faz INSERT/UPDATE/DELETE, nao altera configuracoes, e nao imprime dados pessoais.
 -- Antes de executar, CONFIRME a branch no Neon Console (o SQL nao a identifica).
+-- Falha fechada: usar exclusivamente neondb_owner com BYPASSRLS confirmado,
+-- evitando que RLS apresente uma base populada como vazia.
+DO $inventario_preflight$
+BEGIN
+  IF current_database() <> 'neondb'
+     OR current_user <> 'neondb_owner'
+     OR NOT COALESCE((SELECT rolbypassrls FROM pg_catalog.pg_roles WHERE rolname = current_user),false)
+  THEN
+    RAISE EXCEPTION 'Inventario cancelado: exige neondb/neondb_owner com BYPASSRLS. Nao interpretar contagens sob RLS como ausencia de dados.';
+  END IF;
+END
+$inventario_preflight$;
 WITH
  p AS (
    SELECT count(*)::bigint n,
@@ -19,12 +31,12 @@ WITH
      count(*) FILTER (WHERE accounting_band='received' AND received_amount IS NULL)::bigint recebidos_sem_valor,
      count(*) FILTER (WHERE accounting_band IN ('upcoming','overdue') AND open_amount IS NULL)::bigint abertos_sem_valor,
      count(*) FILTER (WHERE accounting_band='received' AND received_at IS NULL)::bigint recebidos_sem_data,
-     count(*) FILTER (WHERE publication_id NOT IN (SELECT id FROM public.lg_publications))::bigint financeiro_sem_publicacao
+     count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM public.lg_publications p WHERE p.id = publication_id))::bigint financeiro_sem_publicacao
    FROM public.lg_financial_records
  ),
  a AS (
    SELECT count(*)::bigint n,
-     count(*) FILTER (WHERE publication_id NOT IN (SELECT id FROM public.lg_publications))::bigint auditoria_sem_publicacao,
+     count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM public.lg_publications p WHERE p.id = publication_id))::bigint auditoria_sem_publicacao,
      count(*) FILTER (WHERE source_sheet IS NULL OR source_row IS NULL)::bigint auditoria_sem_origem
    FROM public.lg_audit_issues
  ),
