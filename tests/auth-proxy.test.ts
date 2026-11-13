@@ -29,3 +29,19 @@ test("Auth proxy: logout limpa os cookies mesmo quando o serviço remoto falha",
  const res=response();await createAuthProxy(env,async()=>{throw Error("synthetic outage");})(request("sign-out","POST",{origin:env.AUTH_APP_ORIGIN,"content-type":"application/json",cookie:"__Secure-neon-auth.session_token=synthetic"},{}),res);
  assert.equal(res.statusCode,503);assert.match(String(res.headers["Set-Cookie"]),/Max-Age=0/);
 });
+
+test("Auth proxy: Production exige habilitação explícita, sem liberar cadastro público",async()=>{
+  const enabled={...env,VERCEL_ENV:"production",FINANCIAL_PRODUCTION_ENABLED:"true"};
+  let calls=0;const res=response();
+  await createAuthProxy(enabled,async(url)=>{
+    calls++;assert.equal(String(url),env.NEON_AUTH_BASE_URL+"/get-session");
+    return Response.json({session:null,user:null});
+  })(request("get-session"),res);
+  assert.equal(res.statusCode,200);assert.equal(calls,1);
+  const denied=response();
+  await createAuthProxy(enabled,async()=>{calls++;throw Error("not expected");})(request("sign-up/email","POST"),denied);
+  assert.equal(denied.statusCode,404);assert.equal(calls,1);
+  const off=response();
+  await createAuthProxy({...enabled,FINANCIAL_PRODUCTION_ENABLED:"false"},async()=>{throw Error("not expected");})(request(),off);
+  assert.equal(off.statusCode,404);
+});

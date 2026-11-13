@@ -1055,3 +1055,23 @@ test("GET diagnóstico na resposta: somente 400 autenticado, sem alterar permiss
   const missingSignature = await s.request("active?unexpected=1","GET",undefined,undefined,{authorization:"Bearer invalid"});
   assert.equal(missingSignature.statusCode,401); assert.equal(missingSignature.headers["X-Biosaude-Get-Diagnostic"],undefined);
 });
+
+test("API: Production só habilita rotas com duas flags explícitas, sem dispensar JWT",async()=>{
+  for (const override of [
+    { VERCEL_ENV:"production", FINANCIAL_API_ENABLED:"true", FINANCIAL_PRODUCTION_ENABLED:"false" },
+    { VERCEL_ENV:"production", FINANCIAL_API_ENABLED:"false", FINANCIAL_PRODUCTION_ENABLED:"true" },
+  ]) {
+    const handler=createFinancialHandler({ environment:{...environment,...override},database:db });
+    const res={statusCode:0,body:"",setHeader(){},end(v?:string){this.body=v??"";}};
+    await handler({method:"GET",url:"/api/financial/active",headers:{}},res);
+    assert.equal(res.statusCode,404);
+  }
+  const baseline=databaseCalls;
+  const handler=createFinancialHandler({
+    environment:{...environment,VERCEL_ENV:"production",FINANCIAL_PRODUCTION_ENABLED:"true"},database:db,
+  });
+  const res={statusCode:0,body:"",setHeader(){},end(v?:string){this.body=v??"";}};
+  await handler({method:"GET",url:"/api/financial/active",headers:{}},res);
+  assert.equal(res.statusCode,401);
+  assert.equal(databaseCalls,baseline);
+});
