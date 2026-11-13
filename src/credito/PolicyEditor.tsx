@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { CreditConfig, PolicyProposal, RiskRule } from "./types";
 import { riskOrder, validateConfig } from "./policy";
-import { proposalRepository } from "../persistencia/repository";
+import { usePersistence } from "../persistencia/context";
 import { cents, money } from "../domain/money";
 export function PolicyEditor({
   config,
@@ -12,6 +12,7 @@ export function PolicyEditor({
   versions: PolicyProposal[];
   onSave: (proposal: PolicyProposal) => void;
 }) {
+  const { proposals: proposalRepository } = usePersistence();
   const [draft, setDraft] = useState<CreditConfig>(() =>
       structuredClone(config),
     ),

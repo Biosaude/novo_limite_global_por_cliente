@@ -3,8 +3,8 @@ import {
   assertServerOnly,
   readDatabaseUrl,
   type ServerEnvironment,
-} from "../config";
-import { ServerError } from "../errors";
+} from "../config.js";
+import { ServerError } from "../errors.js";
 export interface Statement {
   text: string;
   values?: readonly (string | number | boolean | null)[];
@@ -67,6 +67,29 @@ export function createDatabase(
           error && typeof error === "object" && "code" in error
             ? error.code
             : undefined;
+        // Diagnóstico exclusivamente categórico no Preview: jamais registrar SQL,
+        // parâmetros, host, URI, token, mensagem ou stack do driver.
+        const category = ({
+          "28P01": "db_auth_failed",
+          "3D000": "database_missing",
+          "42501": "sql_permission_denied",
+          "42P01": "relation_missing",
+          "42883": "function_missing",
+          "40001": "serialization_conflict",
+          "08001": "connection_failed",
+          "08003": "connection_failed",
+          "08006": "connection_failed",
+          "57P01": "connection_terminated",
+        } as Record<string, string>)[typeof code === "string" ? code : ""] ??
+          (typeof code === "string" && code.startsWith("08")
+            ? "connection_failed" : "other_driver_failure");
+        if (["preview", "development"].includes((environment ?? process.env).VERCEL_ENV ?? "")) {
+          console.warn(JSON.stringify({
+            event: "FINANCIAL_DATABASE_FAILURE",
+            category,
+            sqlStateRecognized: category !== "other_driver_failure",
+          }));
+        }
         if (code === "40001")
           throw new ServerError(
             "REVISION_CONFLICT",

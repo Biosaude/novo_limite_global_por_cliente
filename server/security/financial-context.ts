@@ -1,11 +1,11 @@
-import type { ScopedDatabase, Statement } from "../db/client";
-import { ServerError, accessDenied } from "../errors";
+import type { ScopedDatabase, Statement } from "../db/client.js";
+import { ServerError, accessDenied } from "../errors.js";
 import {
   validateScope,
   type AuthorizationGate,
   type Permission,
-} from "./authorization";
-import type { VerifiedIdentity } from "./identity";
+} from "./authorization.js";
+import type { VerifiedIdentity } from "./identity.js";
 /** Verifica associação no servidor e novamente dentro de cada transação financeira. */
 export function financialContext(
   base: ScopedDatabase,

@@ -18,7 +18,8 @@ export function serverBoundary(root = process.cwd()): Plugin {
       const path = normalizePath(id.split("?")[0]);
       if (
         folders.some((folder) => path.startsWith(folder)) ||
-        path.includes("/node_modules/@neondatabase/")
+        /\/node_modules\/@neondatabase\/(?!auth\/)/.test(path) ||
+        /\/node_modules\/@neondatabase\/auth\/dist\/(?:server|next)/.test(path)
       )
         throw new Error(
           "Importação de código de servidor no bundle do navegador bloqueada.",

@@ -1,14 +1,14 @@
-import { normalize } from "../../src/importacao/normalize";
+import { normalize } from "../../src/importacao/normalize.js";
 import {
   fieldLabels,
   type Dataset,
   type Mapping,
   type RawCell,
   type SourceWorkbook,
-} from "../../src/domain/types";
-import { validDate } from "../../src/domain/dates";
-import { validateDataset } from "../persistence/dataset-codec";
-import { ServerError } from "../errors";
+} from "../../src/domain/types.js";
+import { validDate } from "../../src/domain/dates.js";
+import { validateDataset } from "../persistence/dataset-codec.js";
+import { ServerError } from "../errors.js";
 export const badInput = () =>
   new ServerError("INVALID_INPUT", "Entrada inválida.", 400);
 export function object(value: unknown): Record<string, unknown> {
@@ -48,9 +48,12 @@ export function normalizeImport(value: unknown): Dataset {
     )
       throw badInput();
     const names = new Set<string>();
+    // Limite de células alinhado ao leitor de Excel. A profundidade e
+    // complexidade de valores aninhados são limitadas separadamente.
     let cells = 0;
+    let nodes = 0;
     function cell(value: unknown, depth = 0): value is RawCell {
-      if (++cells > 250000 || depth > 8) throw badInput();
+      if (++nodes > 4_000_000 || depth > 8) throw badInput();
       if (value === null || typeof value === "boolean") return true;
       if (typeof value === "string") return value.length <= 20000;
       if (typeof value === "number") return Number.isFinite(value);
@@ -88,9 +91,11 @@ export function normalizeImport(value: unknown): Dataset {
           Number(row.number) < 1 ||
           numbers.has(Number(row.number)) ||
           !Array.isArray(row.cells) ||
-          row.cells.length > Number(sheet.columns) ||
-          !row.cells.every((v) => cell(v))
+          row.cells.length > Number(sheet.columns)
         )
+          throw badInput();
+        cells += row.cells.length;
+        if (cells > 2_000_000 || !row.cells.every((v) => cell(v)))
           throw badInput();
         numbers.add(Number(row.number));
       }
@@ -130,7 +135,7 @@ export function normalizeImport(value: unknown): Dataset {
         input.filename,
       ),
     );
-    if (Buffer.byteLength(JSON.stringify(dataset), "utf8") > 3_000_000)
+    if (Buffer.byteLength(JSON.stringify(dataset), "utf8") > 32_000_000)
       throw new ServerError("PAYLOAD_TOO_LARGE", "Carga excede o limite.", 413);
     return dataset;
   } catch (error) {

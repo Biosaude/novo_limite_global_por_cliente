@@ -1,4 +1,4 @@
-import type { Category, Mapping, RawCell, SourceRow, SourceSheet } from "../domain/types";
+import type { Category, Mapping, RawCell, SourceRow, SourceSheet } from "../domain/types.js";
 
 type Reference = { column: number; row: number; absoluteColumn: boolean; absoluteRow: boolean };
 type Parsed = { reference: Reference; category: "upcoming" | "overdue" };
