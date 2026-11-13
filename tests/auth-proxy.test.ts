@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {createAuthProxy} from "../server/auth/proxy";
+import {createFinancialHandler} from "../server/financial/handler";
 const env={VERCEL_ENV:"preview",NEON_AUTH_BASE_URL:"https://ep-synthetic.neonauth.us-east-2.aws.neon.build/neondb/auth",AUTH_APP_ORIGIN:"https://synthetic.vercel.app"};
 function response(){return {statusCode:0,headers:{} as Record<string,unknown>,body:"",setHeader(k:string,v:unknown){this.headers[k]=v;},end(v?:string){this.body=v??"";}};}
 const request=(path="get-session",method="GET",headers:Record<string,string>={},body?:unknown)=>({method,url:`/api/auth/proxy?path=${path}`,headers,body});
@@ -8,6 +9,42 @@ test("Auth proxy: Production e configuração ausente não abrem rede",async()=>
  for(const config of [{...env,VERCEL_ENV:"production"},{VERCEL_ENV:"preview"}]){
   let calls=0;const res=response();await createAuthProxy(config,async()=>{calls++;throw Error();})(request(),res);assert.equal(res.statusCode,404);assert.equal(calls,0);
  }
+});
+
+test("Production: verificação e recuperação independem das duas flags financeiras",async()=>{
+ for(const production of [undefined,"false","true"])for(const api of [undefined,"false","true"]){
+  const config={...env,VERCEL_ENV:"production",AUTH_PRODUCTION_ENABLED:"true",FINANCIAL_PRODUCTION_ENABLED:production,FINANCIAL_API_ENABLED:api};
+  for(const [path,body] of [
+   ["sign-in/email",{email:"synthetic@example.invalid",password:"synthetic-password"}],
+   ["request-password-reset",{email:"synthetic@example.invalid"}],
+   ["reset-password",{newPassword:"synthetic-password",token:"synthetic-reset"}],
+   ["send-verification-email",{email:"synthetic@example.invalid"}],
+   ["email-otp/verify-email",{email:"synthetic@example.invalid",otp:"123456"}],
+  ] as const){
+   let calls=0;const res=response();
+   await createAuthProxy(config,async(url,init)=>{
+    calls++;assert.equal(String(url),env.NEON_AUTH_BASE_URL+"/"+path);
+    const value=JSON.parse(String(init?.body));
+    if(path==="send-verification-email")assert.equal(value.callbackURL,env.AUTH_APP_ORIGIN+"/?access=verified");
+    return Response.json({status:true});
+   })(request(path,"POST",{origin:env.AUTH_APP_ORIGIN,"content-type":"application/json"},body),res);
+   assert.equal(res.statusCode,200);assert.equal(calls,1);
+  }
+  if(production!=="true" || api!=="true"){
+   const res=response();await createFinancialHandler({environment:config})({method:"GET",url:"/api/financial/active",headers:{}},res);
+   assert.equal(res.statusCode,404);
+  }
+ }
+});
+
+test("Production: origem explícita obrigatória, aliases Preview não autorizam callbacks",async()=>{
+ const config={...env,VERCEL_ENV:"production",AUTH_PRODUCTION_ENABLED:"true",VERCEL_URL:"other.vercel.app",VERCEL_BRANCH_URL:"branch.vercel.app"};
+ for(const origin of ["https://other.vercel.app","https://branch.vercel.app"]){
+  const res=response();await createAuthProxy(config,async()=>{throw Error("unexpected network");})(request("send-verification-email","POST",{origin,"content-type":"application/json"},{email:"synthetic@example.invalid"}),res);
+  assert.equal(res.statusCode,403);
+ }
+ const res=response();await createAuthProxy({...config,AUTH_APP_ORIGIN:undefined},async()=>{throw Error("unexpected network");})(request(),res);
+ assert.equal(res.statusCode,503);
 });
 test("Auth proxy: destino fixo, cookies limitados, headers e cookies seguros",async()=>{
  const res=response();await createAuthProxy(env,async(url,init)=>{
@@ -31,7 +68,7 @@ test("Auth proxy: logout limpa os cookies mesmo quando o serviço remoto falha",
 });
 
 test("Auth proxy: Production exige habilitação explícita, sem liberar cadastro público",async()=>{
-  const enabled={...env,VERCEL_ENV:"production",FINANCIAL_PRODUCTION_ENABLED:"true"};
+  const enabled={...env,VERCEL_ENV:"production",AUTH_PRODUCTION_ENABLED:"true",FINANCIAL_PRODUCTION_ENABLED:"false",FINANCIAL_API_ENABLED:"false"};
   let calls=0;const res=response();
   await createAuthProxy(enabled,async(url)=>{
     calls++;assert.equal(String(url),env.NEON_AUTH_BASE_URL+"/get-session");
@@ -42,6 +79,6 @@ test("Auth proxy: Production exige habilitação explícita, sem liberar cadastr
   await createAuthProxy(enabled,async()=>{calls++;throw Error("not expected");})(request("sign-up/email","POST"),denied);
   assert.equal(denied.statusCode,404);assert.equal(calls,1);
   const off=response();
-  await createAuthProxy({...enabled,FINANCIAL_PRODUCTION_ENABLED:"false"},async()=>{throw Error("not expected");})(request(),off);
+  await createAuthProxy({...enabled,AUTH_PRODUCTION_ENABLED:"false",FINANCIAL_PRODUCTION_ENABLED:"true",FINANCIAL_API_ENABLED:"true"},async()=>{throw Error("not expected");})(request(),off);
   assert.equal(off.statusCode,404);
 });

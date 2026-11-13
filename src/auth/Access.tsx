@@ -6,18 +6,18 @@ import { authClient, currentUser, financialToken } from "./client";
 import { FinancialHttpClient, HttpDatasetRepository, HttpProposalRepository, RemoteError } from "../persistencia/http";
 import { PersistenceContext, type Persistence } from "../persistencia/context";
 import { createLocalRepositories } from "../persistencia/repository";
+import { workspaceConfiguration, workspacePattern } from "./workspace";
 
 type User = { id: string; email: string };
-const BIOSAUDE_WORKSPACE_ID = "fa76845b-235f-48fc-a609-81134636f5b5";
-const organizationLabel = (workspace: string) => workspace.toLowerCase() === BIOSAUDE_WORKSPACE_ID ? "Biosaude" : workspace;
-const organizationId = (name: string) => name.trim().toLowerCase() === "biosaude" ? BIOSAUDE_WORKSPACE_ID : name;
-const workspacePattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+const organization = workspaceConfiguration(import.meta.env.VITE_DEPLOYMENT_ENVIRONMENT, import.meta.env.VITE_FINANCIAL_WORKSPACE_ID);
+const organizationLabel = organization.label;
+const organizationId = organization.id;
 export function Access({returned}: {returned: AccessReturn}) {
   const [accessStep,setAccessStep] = useState<AccessStep | null>(returned.step);
   const [accessMessage,setAccessMessage] = useState(returned.message);
   const [user,setUser] = useState<User | null>(null), [loading,setLoading] = useState(true);
   const [email,setEmail] = useState(""), [password,setPassword] = useState("");
-  const [workspace,setWorkspace] = useState(import.meta.env.VITE_FINANCIAL_WORKSPACE_ID ?? BIOSAUDE_WORKSPACE_ID);
+  const [workspace,setWorkspace] = useState(organization.defaultId);
   const [selected,setSelected] = useState(""), [error,setError] = useState(""), [busy,setBusy] = useState(false);
   const [generation,setGeneration] = useState(0), [local,setLocal] = useState(false);
   const version = useRef(0);
@@ -103,13 +103,19 @@ export function Access({returned}: {returned: AccessReturn}) {
     {accessMessage && <p role="status">{accessMessage}</p>}
     </>}
   </main>;
+  if (import.meta.env.VITE_FINANCIAL_REMOTE_ENABLED !== "true") return <main className="panel" style={{maxWidth:440,margin:"64px auto",padding:24}}>
+    <h1>Biosaúde · Acesso ao dashboard</h1>
+    <p role="status">Sessão confirmada para {user.email}. O acesso financeiro ainda não está disponível neste ambiente.</p>
+    <button className="secondary" disabled={busy} onClick={()=>void logout()}>Sair</button>
+    {error && <p role="alert" className="error-text">{error}</p>}
+  </main>;
   const current=local ? fallback?.scope===JSON.stringify([user.id,selected]) ? fallback.value : null : persistence;
   return <>
     <div className="panel table-controls" aria-label="Sessão e organização" style={{margin:16,padding:12}}>
       <span>{user.email} · {selected ? local ? "Modo local isolado — sem sincronização" : `Neon — ${organizationLabel(selected)}` : "Selecione a organização autorizada"}</span>
       <form onSubmit={e=>{e.preventDefault(); if (!workspacePattern.test(workspace)) {setError("Informe um identificador de organização válido.");return;}
         version.current++;setLocal(false);setSelected(workspace.toLowerCase());setGeneration(x=>x+1);setError("");}}>
-        <label>Organização<input aria-label="Organização" value={organizationLabel(workspace)} required onChange={e=>setWorkspace(organizationId(e.target.value))} /></label>
+        <label>Organização<input aria-label="Identificador da organização" value={organizationLabel(workspace)} required onChange={e=>setWorkspace(organizationId(e.target.value))} /></label>
         <button className="secondary" disabled={busy}>Abrir organização</button>
       </form>
       {selected && <button className="secondary" onClick={()=>{version.current++;setGeneration(x=>x+1);setError("");}}>Recarregar base</button>}

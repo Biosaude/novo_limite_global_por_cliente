@@ -131,7 +131,9 @@ export class FinancialHttpClient {
         const headerRevision = rawRevision !== null && /^(?:0|[1-9][0-9]{0,15})$/.test(rawRevision)
           ? Number(rawRevision) : null;
         const etagRevision = match ? Number(match[1]) : null;
-        if ((headerRevision === null && etagRevision === null) ||
+        if ((rawRevision !== null && headerRevision === null) ||
+            (etag !== null && etagRevision === null) ||
+            (headerRevision === null && etagRevision === null) ||
             (headerRevision !== null && !Number.isSafeInteger(headerRevision)) ||
             (etagRevision !== null && !Number.isSafeInteger(etagRevision)) ||
             (headerRevision !== null && etagRevision !== null && headerRevision !== etagRevision))

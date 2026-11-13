@@ -25,12 +25,14 @@ test("HTTP: leitura de revisão diferente não substitui silenciosamente o conte
  await assert.rejects(c.request("versions"),{code:"REVISION_CONFLICT"});
  await assert.rejects(c.request("active","DELETE"),{code:"REVISION_CONFLICT"});
 });
-test("HTTP: nega escrita sem revisão, ETag fraco e payload excessivo",async()=>{
- const c=client(async()=>ok({},'W/"0"'));
+test("HTTP: nega escrita sem revisão, ETag inválido e payload excessivo",async()=>{
+ const c=client(async()=>ok({},'W/"invalid"'));
  await assert.rejects(c.request("active","DELETE"),{code:"PRECONDITION_REQUIRED"});
  await assert.rejects(c.request("active"),{code:"UNAVAILABLE"});
  const good=client(async()=>ok({}));await good.request("active");
- await assert.rejects(good.request("imports","POST",{value:"x".repeat(3_000_001)}),{code:"PAYLOAD_TOO_LARGE"});
+ await assert.rejects(good.request("reviews","PATCH",{value:"x".repeat(3_000_001)}),{code:"PAYLOAD_TOO_LARGE"});
+ const imports=client(async()=>ok({}));await imports.request("active");
+ await assert.rejects(imports.request("imports","POST",{value:"x".repeat(32_000_001)}),{code:"PAYLOAD_TOO_LARGE"});
 });
 test("HTTP: sessão invalidada descarta respostas pendentes, sem gravar cache local",async()=>{
  let active=true;const c=client(async()=>{active=false;return ok({dataset:{}});},{active:()=>active});
