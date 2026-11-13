@@ -26,8 +26,31 @@ test("GET normaliza ETag enfraquecido pela Vercel e envia If-Match forte", async
   assert.deepEqual(seen, ["", '"3"']);
 });
 test("GET legado aceita W/ sem cabeçalho auxiliar", async () => {
-  const client = new FinancialHttpClient({ workspace, active: () => true, token: async () => "synthetic", send: async () => response('W/"3"') });
+  const client = new FinancialHttpClient({ workspace, active: () => true, token: async () => "synthetic", send: async (_url, init) => {
+    if (init?.method === "DELETE") assert.equal(new Headers(init.headers).get("if-match"), '"3"');
+    return response('W/"3"');
+  } });
   assert.deepEqual(await client.request("active"), { dataset: null });
+  await client.request("active", "DELETE");
+});
+
+test("revisão: cabeçalhos presentes inválidos não são ignorados e não habilitam escrita", async () => {
+  for (const [etag, revision] of [['W/"invalid"', "3"], ['"3"', "invalid"], ['"03"', "3"], ['"9007199254740992"', undefined]]) {
+    let calls = 0;
+    const client = new FinancialHttpClient({ workspace, active: () => true, token: async () => "synthetic", send: async () => { calls++; return response(etag!, revision); } });
+    await assert.rejects(client.request("active"), { code: "UNAVAILABLE" });
+    await assert.rejects(client.request("active", "DELETE"), { code: "PRECONDITION_REQUIRED" });
+    assert.equal(calls, 1);
+  }
+});
+
+test("revisão: alteração após ETag fraco bloqueia escrita sem retry", async () => {
+  let calls = 0;
+  const client = new FinancialHttpClient({ workspace, active: () => true, token: async () => "synthetic", send: async () => response(`W/"${calls++}"`) });
+  await client.request("active");
+  await assert.rejects(client.request("versions"), { code: "REVISION_CONFLICT" });
+  await assert.rejects(client.request("active", "DELETE"), { code: "REVISION_CONFLICT" });
+  assert.equal(calls, 2);
 });
 test("resposta divergente entre ETag e revisão é rejeitada", async () => {
   const client = new FinancialHttpClient({ workspace, active: () => true, token: async () => "synthetic", send: async () => response('W/"3"', "4") });
