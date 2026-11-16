@@ -20,7 +20,7 @@ async function service(page:Page,options:{mail?:boolean;password?:string|null}={
    state.verified=true;return Response.json({status:true});
   }
   if(path==="sign-in/email"){
-   if(!state.password||body.password!==state.password)return Response.json({code:"INVALID_EMAIL_OR_PASSWORD"},{status:401});
+   if(!state.password||body.password!==state.password)return Response.json({code:"INVALID_EMAIL_OR_PASSWORD"},{status:400});
    if(!state.verified)return Response.json({code:"EMAIL_NOT_VERIFIED"},{status:403});signed=true;
   }
   if(path==="sign-out")signed=false;
@@ -68,4 +68,15 @@ test("recuperação: envio indisponível informa bloqueio sem afirmar entrega de
 });
 test("verificação pendente: login exige confirmação e retorno de link não concede acesso",async({page})=>{
  const state=await service(page,{password:newPassword});await page.goto("/?access=verified");await expect(page.getByRole("status")).toContainText("serviço confirmará");await page.getByLabel("E-mail",{exact:true}).fill(email);await page.getByLabel("Senha",{exact:true}).fill(newPassword);await page.getByRole("button",{name:"Entrar",exact:true}).click();await expect(page.getByLabel("Código de verificação")).toBeVisible();expect(state.verified).toBe(false);expect(state.financial).toBe(0);
+});
+test("login inválido: erro 400 do provedor retorna 401 e mantém o acesso fechado",async({page})=>{
+ const state=await service(page,{password:newPassword});
+ await page.goto("/");await page.getByLabel("E-mail",{exact:true}).fill(email);
+ await page.getByLabel("Senha",{exact:true}).fill("synthetic-wrong-password");
+ const rejection=page.waitForResponse(response=>response.url().endsWith("/api/neon-auth/sign-in/email"));
+ await page.getByRole("button",{name:"Entrar",exact:true}).click();
+ expect((await rejection).status()).toBe(401);
+ await expect(page.getByRole("alert")).toContainText("Não foi possível entrar");
+ await expect(page.getByRole("button",{name:"Entrar",exact:true})).toBeVisible();
+ expect(state.financial).toBe(0);expect(state.verified).toBe(false);
 });

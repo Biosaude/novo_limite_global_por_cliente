@@ -119,6 +119,8 @@ export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fe
           return reply(200,{status:true}); // Não revela existência ou estado de uma conta.
         if (path==="sign-in/email" && code==="EMAIL_NOT_VERIFIED")
           return reply(403,{code:"EMAIL_NOT_VERIFIED",message:"Verifique seu e-mail antes de entrar."});
+        if (path==="sign-in/email" && ["INVALID_EMAIL_OR_PASSWORD","INVALID_PASSWORD","CREDENTIAL_ACCOUNT_NOT_FOUND","USER_NOT_FOUND"].includes(code))
+          return reply(401,{code:"AUTH_REJECTED",message:"Não foi possível autenticar. Confira os dados e a verificação de e-mail."});
         if (path==="reset-password" && ["INVALID_TOKEN","TOKEN_EXPIRED","TOKEN_NOT_FOUND"].includes(code))
           return reply(400,{code:"INVALID_TOKEN",message:"Link inválido, expirado ou já utilizado. Solicite outro."});
         if (path==="email-otp/verify-email")

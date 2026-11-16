@@ -137,14 +137,14 @@ test('Production security: PostgreSQL 18 disposable (no external database)', { t
       try { denied(PRODUCTION_RUNTIME_CHECK); } finally { sql('ALTER TABLE biosaude.workspace_state OWNER TO postgres'); }
       for (const [table, privilege] of [['identity_memberships','INSERT'],['schema_migrations','UPDATE'],['financial_records','TRUNCATE']]) {
         sql(`GRANT ${privilege} ON biosaude.${table} TO ${runtime}`);
-        try { denied(PRODUCTION_RUNTIME_CHECK, runtime, '42501'); }
+        try { denied(PRODUCTION_RUNTIME_CHECK, runtime, 'PBR01'); }
         finally { sql(`REVOKE ${privilege} ON biosaude.${table} FROM ${runtime}`); }
       }
       sql('ALTER TABLE biosaude.workspace_state DISABLE ROW LEVEL SECURITY');
-      try { denied(PRODUCTION_RUNTIME_CHECK, runtime, '42501'); }
+      try { denied(PRODUCTION_RUNTIME_CHECK, runtime, 'PBR01'); }
       finally { sql('ALTER TABLE biosaude.workspace_state ENABLE ROW LEVEL SECURITY'); }
       sql('DROP POLICY production_login_boundary ON biosaude.workspace_state');
-      try { denied(PRODUCTION_RUNTIME_CHECK, runtime, '42501'); }
+      try { denied(PRODUCTION_RUNTIME_CHECK, runtime, 'PBR01'); }
       finally { sql(boundary.match(/CREATE POLICY production_login_boundary ON biosaude\.workspace_state[\s\S]*?;/)![0]); }
       sql(PRODUCTION_RUNTIME_CHECK, runtime);
     });

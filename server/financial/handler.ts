@@ -84,7 +84,7 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
     const reply = (status: number, body: unknown) => {
       const entry = diagnostic?.finish(status);
       // Only sanitized metadata about this request; never financial data or raw input.
-      // Production/disabled routes never create a diagnostic; failed JWTs never receive the header.
+      // Disabled routes never create a diagnostic; failed JWTs never receive the header.
       if (identityVerified && status === 400 && entry)
         res.setHeader("X-Biosaude-Get-Diagnostic", JSON.stringify(entry));
       res.statusCode = status;
