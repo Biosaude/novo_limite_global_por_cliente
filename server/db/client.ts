@@ -127,7 +127,10 @@ export function createDatabase(
       let phase: "configuration" | "transaction" = "configuration";
       try {
         const url = driver ? undefined : readDatabaseUrl(environment);
-        driver ??= (factory ?? ((environment ?? process.env).VERCEL_ENV === "production" ? websocketFactory : neonFactory))(url!);
+        // Opt-in only: existing HTTP deployments retain their established transport.
+        // WebSocket is enabled explicitly for an isolated Production rollout.
+        const transport = (environment ?? process.env).FINANCIAL_DB_TRANSPORT;
+        driver ??= (factory ?? (transport === "websocket" ? websocketFactory : neonFactory))(url!);
         phase = "transaction";
         const checks: Statement[] = (environment ?? process.env).VERCEL_ENV === "production"
           ? [{ text: PRODUCTION_RUNTIME_CHECK }] : [];
