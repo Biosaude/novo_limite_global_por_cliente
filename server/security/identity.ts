@@ -18,7 +18,10 @@ export function createIdentityVerifier(
 ): IdentityVerifier {
   assertServerOnly();
   const issuer = env.FINANCIAL_AUTH_ISSUER ?? "";
-  const audience = env.FINANCIAL_AUTH_AUDIENCE ?? "";
+  // Better Auth defaults the JWT audience to its issuer. Retain strict
+  // audience validation even when the dedicated variable is not configured.
+  // An explicit audience still takes precedence for customized providers.
+  const audience = env.FINANCIAL_AUTH_AUDIENCE?.trim() || issuer;
   const jwks = env.FINANCIAL_AUTH_JWKS_URL ?? "";
   try {
     for (const value of [issuer, jwks]) {

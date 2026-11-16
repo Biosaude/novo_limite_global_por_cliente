@@ -142,3 +142,36 @@ test("JWT: rejeita HMAC, none e algoritmo fora da lista antes de resolver chaves
     await assert.rejects(verifier.verify(`Bearer ${token}`), denied);
   assert.equal(resolutions, 0);
 });
+
+test("JWT: audiencia padrao igual ao emissor sem variavel manual", async () => {
+  const key = await generateKeyPair("RS256");
+  const jwk = { ...(await exportJWK(key.publicKey)), kid: "default", alg: "RS256" };
+  const verifier = createIdentityVerifier({
+    FINANCIAL_AUTH_ISSUER: issuer,
+    FINANCIAL_AUTH_JWKS_URL: jwksUrl,
+  }, createLocalJWKSet({ keys: [jwk] }));
+  const claims = {
+    iss: issuer, aud: issuer, sub: "synthetic-default",
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 300,
+  };
+  const sign = (claimsToSign: Record<string, unknown>) =>
+    new SignJWT(claimsToSign)
+      .setProtectedHeader({ alg: "RS256", kid: "default" })
+      .sign(key.privateKey);
+  assert.equal((await verifier.verify(`Bearer ${await sign(claims)}`)).subject, "synthetic-default");
+  await assert.rejects(
+    verifier.verify(`Bearer ${await sign({ ...claims, aud: "other" })}`),
+    denied,
+  );
+  const customAudienceVerifier = createIdentityVerifier({
+    FINANCIAL_AUTH_ISSUER: issuer,
+    FINANCIAL_AUTH_AUDIENCE: "specific-service",
+    FINANCIAL_AUTH_JWKS_URL: jwksUrl,
+  }, createLocalJWKSet({ keys: [jwk] }));
+  await assert.rejects(customAudienceVerifier.verify(`Bearer ${await sign(claims)}`), denied);
+  assert.equal((await customAudienceVerifier.verify(`Bearer ${await sign({ ...claims, aud: "specific-service" })}`)).subject, "synthetic-default");
+  assert.throws(() => createIdentityVerifier({
+    FINANCIAL_AUTH_JWKS_URL: jwksUrl,
+  }, createLocalJWKSet({ keys: [jwk] })), { code: "IDENTITY_NOT_CONFIGURED" });
+});
