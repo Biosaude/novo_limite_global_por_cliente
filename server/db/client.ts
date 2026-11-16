@@ -5,7 +5,7 @@ import {
   type ServerEnvironment,
 } from "../config.js";
 import { ServerError } from "../errors.js";
-import { databaseDiagnostic, logDatabaseDiagnostic, type DatabaseDiagnosticLogger } from "./diagnostics.js";
+import { databaseDiagnostic, databaseErrorCode, logDatabaseDiagnostic, type DatabaseDiagnosticLogger } from "./diagnostics.js";
 export interface Statement {
   text: string;
   values?: readonly (string | number | boolean | null)[];
@@ -106,10 +106,7 @@ export function createDatabase(
         ]);
         return result.slice(checks.length + 1);
       } catch (error) {
-        const code =
-          error && typeof error === "object" && "code" in error
-            ? error.code
-            : undefined;
+        const code = databaseErrorCode(error);
         if (["production", "preview", "development"].includes((environment ?? process.env).VERCEL_ENV ?? "")) {
           try { log(databaseDiagnostic(error, phase)); } catch { /* Logging must not alter authorization or rollback. */ }
         }
