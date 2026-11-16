@@ -5,6 +5,31 @@ import {createFinancialHandler} from "../server/financial/handler";
 const env={VERCEL_ENV:"preview",NEON_AUTH_BASE_URL:"https://ep-synthetic.neonauth.us-east-2.aws.neon.build/neondb/auth",AUTH_APP_ORIGIN:"https://synthetic.vercel.app"};
 function response(){return {statusCode:0,headers:{} as Record<string,unknown>,body:"",setHeader(k:string,v:unknown){this.headers[k]=v;},end(v?:string){this.body=v??"";}};}
 const request=(path="get-session",method="GET",headers:Record<string,string>={},body?:unknown)=>({method,url:`/api/auth/proxy?path=${path}`,headers,body});
+test("login: invalid credentials are 401 even when Better Auth uses 400; outages remain 503",async()=>{
+ for(const code of ["INVALID_EMAIL_OR_PASSWORD","INVALID_PASSWORD","CREDENTIAL_ACCOUNT_NOT_FOUND","USER_NOT_FOUND"]){
+  for(const status of [400,401,403,500,503]){
+   const res=response();
+   await createAuthProxy({...env,VERCEL_ENV:"production",AUTH_PRODUCTION_ENABLED:"true"},async()=>Response.json({code,message:"private account details"},{status}),()=>{})(
+    request("sign-in/email","POST",{origin:env.AUTH_APP_ORIGIN,"content-type":"application/json"},{email:"synthetic@example.invalid",password:"not-real"}),res);
+   assert.equal(res.statusCode,status>=500?503:401);
+   assert.equal(JSON.parse(res.body).code,status>=500?"AUTH_SERVICE_UNAVAILABLE":"AUTH_REJECTED");
+   assert.ok(!res.body.includes("private account details"));
+  }
+ }
+});
+test("Auth login and recovery never read the PostgreSQL connection configuration",async()=>{
+ const config=new Proxy({...env,VERCEL_ENV:"production",AUTH_PRODUCTION_ENABLED:"true"}, {get(target,key){
+  if(key==="DATABASE_URL" || key==="NEON_HOMOLOGATION_DATABASE_URL")throw Error("Auth must not depend on PostgreSQL credentials");
+  return target[key as keyof typeof target];
+ }});
+ for(const path of ["sign-in/email","request-password-reset"]){
+  let calls=0;const res=response();
+  await createAuthProxy(config,async()=>{calls++;return Response.json({status:true});})(
+   request(path,"POST",{origin:env.AUTH_APP_ORIGIN,"content-type":"application/json"},
+    {email:"synthetic@example.invalid",...(path==="sign-in/email"?{password:"not-real"}:{})}),res);
+  assert.equal(res.statusCode,200);assert.equal(calls,1);
+ }
+});
 test("Auth proxy: Production e configuração ausente não abrem rede",async()=>{
  for(const config of [{...env,VERCEL_ENV:"production"},{VERCEL_ENV:"preview"}]){
   let calls=0;const res=response();await createAuthProxy(config,async()=>{calls++;throw Error();})(request(),res);assert.equal(res.statusCode,404);assert.equal(calls,0);

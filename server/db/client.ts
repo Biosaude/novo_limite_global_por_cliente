@@ -5,6 +5,7 @@ import {
   type ServerEnvironment,
 } from "../config.js";
 import { ServerError } from "../errors.js";
+import { databaseDiagnostic, logDatabaseDiagnostic, type DatabaseDiagnosticLogger } from "./diagnostics.js";
 export interface Statement {
   text: string;
   values?: readonly (string | number | boolean | null)[];
@@ -15,7 +16,8 @@ export interface Driver {
 }
 export type DriverFactory = (url: string) => Driver;
 /** Executed in the same transaction, before any application SQL. A URL username
- * alone cannot establish the privileges of the actual authenticated session. */
+ * alone cannot establish the privileges of the actual authenticated session.
+ * PBR01 distinguishes unsafe server configuration from require_permission's 42501. */
 export const PRODUCTION_RUNTIME_CHECK = `DO $runtime$
 BEGIN
   IF session_user <> 'biosaude_runtime_prod' OR current_user <> session_user
@@ -46,7 +48,7 @@ BEGIN
      OR (SELECT count(*) FROM pg_catalog.pg_policies
        WHERE schemaname='biosaude' AND policyname='production_login_boundary'
        AND permissive='RESTRICTIVE' AND cmd='ALL' AND roles=ARRAY['public']::name[]) <> 20
-  THEN RAISE EXCEPTION 'Unsafe production runtime' USING ERRCODE='42501';
+  THEN RAISE EXCEPTION 'Unsafe production runtime' USING ERRCODE='PBR01';
   END IF;
 END $runtime$`;
 export interface ScopedDatabase {
@@ -70,6 +72,7 @@ const neonFactory: DriverFactory = (url) => {
 export function createDatabase(
   environment?: ServerEnvironment,
   factory: DriverFactory = neonFactory,
+  log: DatabaseDiagnosticLogger = logDatabaseDiagnostic,
 ): ScopedDatabase {
   assertServerOnly();
   let driver: Driver | undefined;
@@ -86,9 +89,11 @@ export function createDatabase(
           "Contexto de persistência inválido.",
           403,
         );
-      const url = driver ? undefined : readDatabaseUrl(environment);
+      let phase: "configuration" | "transaction" = "configuration";
       try {
+        const url = driver ? undefined : readDatabaseUrl(environment);
         driver ??= factory(url!);
+        phase = "transaction";
         const checks: Statement[] = (environment ?? process.env).VERCEL_ENV === "production"
           ? [{ text: PRODUCTION_RUNTIME_CHECK }] : [];
         const result = await driver.transaction([
@@ -105,29 +110,12 @@ export function createDatabase(
           error && typeof error === "object" && "code" in error
             ? error.code
             : undefined;
-        // Diagnóstico exclusivamente categórico no Preview: jamais registrar SQL,
-        // parâmetros, host, URI, token, mensagem ou stack do driver.
-        const category = ({
-          "28P01": "db_auth_failed",
-          "3D000": "database_missing",
-          "42501": "sql_permission_denied",
-          "42P01": "relation_missing",
-          "42883": "function_missing",
-          "40001": "serialization_conflict",
-          "08001": "connection_failed",
-          "08003": "connection_failed",
-          "08006": "connection_failed",
-          "57P01": "connection_terminated",
-        } as Record<string, string>)[typeof code === "string" ? code : ""] ??
-          (typeof code === "string" && code.startsWith("08")
-            ? "connection_failed" : "other_driver_failure");
-        if (["preview", "development"].includes((environment ?? process.env).VERCEL_ENV ?? "")) {
-          console.warn(JSON.stringify({
-            event: "FINANCIAL_DATABASE_FAILURE",
-            category,
-            sqlStateRecognized: category !== "other_driver_failure",
-          }));
+        if (["production", "preview", "development"].includes((environment ?? process.env).VERCEL_ENV ?? "")) {
+          try { log(databaseDiagnostic(error, phase)); } catch { /* Logging must not alter authorization or rollback. */ }
         }
+        if (error instanceof ServerError) throw error;
+        if (code === "PBR01")
+          throw new ServerError("DATABASE_RUNTIME_UNSAFE", "Configuração de execução indisponível.");
         if (code === "40001")
           throw new ServerError(
             "REVISION_CONFLICT",
