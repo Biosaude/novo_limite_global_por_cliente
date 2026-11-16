@@ -51,3 +51,61 @@ test("Neon transport failures and timeouts are classified without copying error 
   }
   assert.equal(databaseDiagnostic({ code: "08" + url }, "transaction").category, "other_driver_failure");
 });
+
+test("wrapped SQLSTATEs retain the category and application error mapping", async () => {
+  for (const [code, category, publicCode, status] of [
+    ["42501", "sql_permission_denied", "ACCESS_DENIED", 403],
+    ["40001", "serialization_conflict", "REVISION_CONFLICT", 409],
+    ["P0002", "version_not_found", "VERSION_NOT_FOUND", 404],
+    ["PBR01", "runtime_security_rejected", "DATABASE_RUNTIME_UNSAFE", 503],
+    ["28P01", "db_auth_failed", "DATABASE_OPERATION_FAILED", 503],
+    ["0A000", "feature_not_supported", "DATABASE_OPERATION_FAILED", 503],
+    ["25P02", "transaction_aborted", "DATABASE_OPERATION_FAILED", 503],
+  ] as const) {
+    for (const wrap of [
+      (e: unknown) => ({ sourceError: e }),
+      (e: unknown) => new Error("private wrapper", { cause: e }),
+      (e: unknown) => ({ code: "UNKNOWN_WRAPPER", sourceError: { cause: e } }),
+      (e: unknown) => new AggregateError([new Error("private sibling"), e]),
+    ]) {
+      const error = wrap(Object.assign(new Error(url), { code, query: "private SQL", parameters: [workspace] }));
+      const logs: DatabaseDiagnostic[] = [];
+      const db = createDatabase(environment, () => ({ async transaction() { throw error; } }), entry => { logs.push(entry); });
+      await assert.rejects(db.transaction(workspace, []), { code: publicCode, status });
+      assert.equal(logs[0].category, category);
+      assert.equal(logs[0].sqlStateRecognized, true);
+      for (const secret of [url, workspace, "private wrapper", "private sibling", "private SQL"])
+        assert.ok(!JSON.stringify(logs).includes(secret));
+    }
+  }
+});
+
+test("nested fetch failures recognize only approved transport codes, including plain objects", () => {
+  for (const [error, category] of [
+    [{ sourceError: new TypeError(url, { cause: { code: "ENOTFOUND" } }) }, "dns_resolution_failed"],
+    [new Error(url, { cause: { sourceError: { code: "ECONNRESET" } } }), "connection_failed"],
+    [{ sourceError: { cause: { code: "UND_ERR_CONNECT_TIMEOUT" } } }, "connection_timeout"],
+    [{ cause: { sourceError: new DOMException(url, "TimeoutError") } }, "connection_timeout"],
+    [{ sourceError: { cause: { code: "ERR_TLS_CERT_ALTNAME_INVALID" } } }, "tls_failed"],
+    [{ cause: { code: url, message: "ENOTFOUND 42501" } }, "other_driver_failure"],
+  ] as const) {
+    const diagnostic = databaseDiagnostic(error, "transaction");
+    assert.equal(diagnostic.category, category);
+    assert.equal(diagnostic.sqlStateRecognized, false);
+    assert.ok(!JSON.stringify(diagnostic).includes(url));
+  }
+});
+
+test("error traversal is bounded, cycle-safe and never evaluates getters or messages", () => {
+  const cycle: { cause?: unknown; sourceError?: unknown } = {};
+  cycle.cause = cycle;
+  cycle.sourceError = { cause: { code: "42501" } };
+  assert.equal(databaseDiagnostic(cycle, "transaction").category, "sql_permission_denied");
+  const hostile = Object.defineProperties({}, Object.fromEntries(["code", "message", "cause", "sourceError", "errors"].map(key =>
+    [key, { get() { throw Error("must not inspect private accessor"); } }])));
+  assert.equal(databaseDiagnostic(hostile, "transaction").category, "other_driver_failure");
+  let deep: unknown = { code: "42501" };
+  for (let n = 0; n < 100; n++) deep = { cause: deep };
+  assert.equal(databaseDiagnostic(deep, "transaction").category, "other_driver_failure");
+  assert.equal(databaseDiagnostic({ code: "40001", cause: { code: "42501" } }, "transaction").category, "serialization_conflict");
+});
