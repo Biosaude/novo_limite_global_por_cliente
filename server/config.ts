@@ -40,6 +40,10 @@ export function readDatabaseUrl(environment?: ServerEnvironment): string {
       )
     )
       throw new Error();
+    // Production must never fall back to the owner or a dashboard-created admin role.
+    if (env.VERCEL_ENV === "production" &&
+        decodeURIComponent(url.username) !== "biosaude_runtime_prod")
+      throw new Error();
   } catch {
     throw new ServerError(
       "DATABASE_URL_INVALID",

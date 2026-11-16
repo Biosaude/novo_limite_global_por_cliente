@@ -4,7 +4,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { build } from "vite";
 import { databaseConfiguration, readDatabaseUrl } from "../server/config";
-import { createDatabase } from "../server/db/client";
+import { createDatabase, PRODUCTION_RUNTIME_CHECK } from "../server/db/client";
 import { PostgresDatasetRepository } from "../server/persistence/postgres-datasets";
 import { PostgresProposalRepository } from "../server/persistence/postgres-proposals";
 import { serverBoundary } from "../build/server-boundary";
@@ -68,6 +68,29 @@ test("conexão: nenhuma leitura de segredo, fábrica ou rede antes da primeira o
     await assert.rejects(request(), { code: "ACCESS_DENIED" });
   assert.equal(reads, 0);
   assert.equal(calls, 0);
+});
+test("Production: recusa owner/admin na URL sem abrir conexão e verifica sessão antes do escopo", async () => {
+  let opened = false;
+  for (const user of ["neondb_owner", "biosaude_api_prod", "unit_user"]) {
+    const url = fake.replace("unit_user", user);
+    const db = createDatabase({ VERCEL_ENV: "production", DATABASE_URL: url }, () => {
+      opened = true;
+      throw Error("must not connect");
+    });
+    await assert.rejects(db.transaction("11111111-1111-4111-8111-111111111111", []),
+      { code: "DATABASE_URL_INVALID" });
+  }
+  assert.equal(opened, false);
+  const batches: { text: string }[][] = [];
+  const db = createDatabase({ VERCEL_ENV: "production", DATABASE_URL: fake.replace("unit_user", "biosaude_runtime_prod") }, () => ({
+    async transaction(statements) {
+      batches.push([...statements]);
+      return [[], [{}], [{ ok: 1 }]];
+    },
+  }));
+  assert.deepEqual(await db.transaction("11111111-1111-4111-8111-111111111111", [{ text: "SELECT 1 AS ok" }]), [[{ ok: 1 }]]);
+  assert.equal(batches[0][0].text, PRODUCTION_RUNTIME_CHECK);
+  assert.match(batches[0][1].text, /set_config/);
 });
 test("conexão: contexto transacional local, reutilização da fábrica e erro do driver sanitizado", async () => {
   let factories = 0;
