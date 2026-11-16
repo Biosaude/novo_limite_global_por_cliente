@@ -14,6 +14,41 @@ export interface Driver {
   transaction(statements: readonly Statement[]): Promise<Row[][]>;
 }
 export type DriverFactory = (url: string) => Driver;
+/** Executed in the same transaction, before any application SQL. A URL username
+ * alone cannot establish the privileges of the actual authenticated session. */
+export const PRODUCTION_RUNTIME_CHECK = `DO $runtime$
+BEGIN
+  IF session_user <> 'biosaude_runtime_prod' OR current_user <> session_user
+     OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=session_user
+       AND rolcanlogin AND NOT rolsuper AND NOT rolbypassrls
+       AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolreplication)
+     OR EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m
+       JOIN pg_catalog.pg_roles r ON r.oid=m.member WHERE r.rolname=session_user)
+     OR pg_catalog.has_schema_privilege(current_user,'biosaude','CREATE')
+     OR pg_catalog.has_table_privilege(current_user,'biosaude.identity_memberships','INSERT,UPDATE,DELETE,TRUNCATE,TRIGGER')
+     OR pg_catalog.has_table_privilege(current_user,'biosaude.schema_migrations','INSERT,UPDATE,DELETE,TRUNCATE,TRIGGER')
+     OR EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+       JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+       WHERE n.nspname='biosaude' AND c.relkind IN ('r','p')
+       AND pg_catalog.has_table_privilege(current_user,c.oid,'TRUNCATE,TRIGGER'))
+     OR EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+       JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+       JOIN pg_catalog.pg_roles r ON r.oid=c.relowner
+       WHERE n.nspname='biosaude' AND r.rolname=session_user)
+     OR EXISTS (SELECT 1 FROM pg_catalog.pg_proc p
+       JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+       JOIN pg_catalog.pg_roles r ON r.oid=p.proowner
+       WHERE n.nspname='biosaude' AND r.rolname=session_user)
+     OR (SELECT count(*) FROM pg_catalog.pg_class c
+       JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+       WHERE n.nspname='biosaude' AND c.relkind IN ('r','p')
+       AND c.relname <> 'schema_migrations' AND c.relrowsecurity AND c.relforcerowsecurity) <> 20
+     OR (SELECT count(*) FROM pg_catalog.pg_policies
+       WHERE schemaname='biosaude' AND policyname='production_login_boundary'
+       AND permissive='RESTRICTIVE' AND cmd='ALL' AND roles=ARRAY['public']::name[]) <> 20
+  THEN RAISE EXCEPTION 'Unsafe production runtime' USING ERRCODE='42501';
+  END IF;
+END $runtime$`;
 export interface ScopedDatabase {
   transaction(
     workspaceId: string,
@@ -54,14 +89,17 @@ export function createDatabase(
       const url = driver ? undefined : readDatabaseUrl(environment);
       try {
         driver ??= factory(url!);
+        const checks: Statement[] = (environment ?? process.env).VERCEL_ENV === "production"
+          ? [{ text: PRODUCTION_RUNTIME_CHECK }] : [];
         const result = await driver.transaction([
+          ...checks,
           {
             text: "SELECT set_config('biosaude.workspace_id', $1, true)",
             values: [workspaceId],
           },
           ...statements,
         ]);
-        return result.slice(1);
+        return result.slice(checks.length + 1);
       } catch (error) {
         const code =
           error && typeof error === "object" && "code" in error
