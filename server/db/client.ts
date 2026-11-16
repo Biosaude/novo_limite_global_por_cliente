@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import { Client, neon } from "@neondatabase/serverless";
 import {
   assertServerOnly,
   readDatabaseUrl,
@@ -68,10 +68,45 @@ const neonFactory: DriverFactory = (url) => {
     },
   };
 };
+/** Production uses a dedicated WebSocket PostgreSQL session per transaction.
+ * A one-shot HTTP batch can fail before a usable SQLSTATE reaches the serverless
+ * driver. We never replay a transaction on transport failure: a write may have
+ * committed before the response was lost.
+ */
+const websocketFactory: DriverFactory = (url) => ({
+  async transaction(statements) {
+    const client = new Client({ connectionString: url });
+    let connected = false;
+    let begun = false;
+    try {
+      await client.connect();
+      connected = true;
+      await client.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
+      begun = true;
+      const rows: Row[][] = [];
+      for (const statement of statements) {
+        const result = await client.query(statement.text, [...(statement.values ?? [])]);
+        rows.push(result.rows as Row[]);
+      }
+      await client.query("COMMIT");
+      begun = false;
+      return rows;
+    } catch (error) {
+      if (begun) {
+        try { await client.query("ROLLBACK"); } catch { /* Preserve original failure. */ }
+      }
+      throw error;
+    } finally {
+      if (connected) {
+        try { await client.end(); } catch { /* Never replace the outcome. */ }
+      }
+    }
+  },
+});
 /** Preguiçoso: importar/criar o módulo não lê a URL, abre conexão ou executa SQL. */
 export function createDatabase(
   environment?: ServerEnvironment,
-  factory: DriverFactory = neonFactory,
+  factory?: DriverFactory,
   log: DatabaseDiagnosticLogger = logDatabaseDiagnostic,
 ): ScopedDatabase {
   assertServerOnly();
@@ -92,7 +127,7 @@ export function createDatabase(
       let phase: "configuration" | "transaction" = "configuration";
       try {
         const url = driver ? undefined : readDatabaseUrl(environment);
-        driver ??= factory(url!);
+        driver ??= (factory ?? ((environment ?? process.env).VERCEL_ENV === "production" ? websocketFactory : neonFactory))(url!);
         phase = "transaction";
         const checks: Statement[] = (environment ?? process.env).VERCEL_ENV === "production"
           ? [{ text: PRODUCTION_RUNTIME_CHECK }] : [];
