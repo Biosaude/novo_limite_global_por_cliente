@@ -8,6 +8,7 @@ import {
   createIdentityVerifier,
   type IdentityVerifier,
 } from "../security/identity.js";
+import { bindFinancialIdentity } from "../corporate/http.js";
 import { financialContext } from "../security/financial-context.js";
 import type { Permission } from "../security/authorization.js";
 import {
@@ -55,6 +56,7 @@ const routes: Record<string, Record<string, Permission>> = {
 const publicErrors = new Set([
   "UNAUTHENTICATED",
   "IDENTITY_NOT_CONFIGURED",
+  "CORPORATE_UNAVAILABLE",
   "ACCESS_DENIED",
   "INVALID_INPUT",
   "DATASET_INVALID",
@@ -78,7 +80,7 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
     res.setHeader("CDN-Cache-Control", "no-store");
     res.setHeader("Vercel-CDN-Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Vary", "Authorization, X-Workspace-Id");
+    res.setHeader("Vary", "Authorization, X-Workspace-Id, Cookie");
     let diagnostic: ReturnType<typeof getDiagnostic> | undefined;
     let identityVerified = false;
     const reply = (status: number, body: unknown) => {
@@ -116,6 +118,7 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
         );
       identity ??= dependencies.identity ?? createIdentityVerifier(env);
       const verified = await identity.verify(req.headers.authorization);
+      await bindFinancialIdentity(req, env, verified);
       identityVerified = true;
       diagnostic.phase("validation");
       const url = new URL(req.url ?? "", "https://request.invalid");

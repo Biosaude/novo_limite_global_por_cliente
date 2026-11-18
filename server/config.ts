@@ -1,3 +1,4 @@
+import { corporatePreviewEnabled } from "./corporate/auth.server.js";
 import { ServerError } from "./errors.js";
 export type ServerEnvironment = Readonly<Record<string, string | undefined>>;
 export function assertServerOnly() {
@@ -20,7 +21,8 @@ export function readDatabaseUrl(environment?: ServerEnvironment): string {
       "PUBLIC_DATABASE_URL_FORBIDDEN",
       "Remova a variável pública de conexão; use somente DATABASE_URL no servidor.",
     );
-  const value = env.DATABASE_URL?.trim();
+  const corporate = corporatePreviewEnabled(env);
+  const value = (corporate ? env.GLOBAL_LIMIT_PREVIEW_DATABASE_URL : env.DATABASE_URL)?.trim();
   if (!value)
     throw new ServerError(
       "DATABASE_URL_MISSING",
@@ -40,6 +42,13 @@ export function readDatabaseUrl(environment?: ServerEnvironment): string {
       )
     )
       throw new Error();
+    if (corporate && (
+      !/^ep-[a-z0-9-]+(?:\.[a-z0-9-]+)*\.neon\.tech$/.test(url.hostname) ||
+      url.hostname !== env.GLOBAL_LIMIT_PREVIEW_NEON_HOST || url.pathname !== "/neondb" ||
+      url.search !== "?sslmode=verify-full" ||
+      decodeURIComponent(url.username) !== "biosaude_runtime_preview" ||
+      (env.DATABASE_URL && new URL(env.DATABASE_URL).hostname.replace("-pooler.", ".") === url.hostname.replace("-pooler.", "."))
+    )) throw Error();
     // Production must never fall back to the owner or a dashboard-created admin role.
     if (env.VERCEL_ENV === "production" &&
         decodeURIComponent(url.username) !== "biosaude_runtime_prod")

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
-import { PRODUCTION_RUNTIME_CHECK } from '../server/db/client.js';
+import { PREVIEW_RUNTIME_CHECK, PRODUCTION_RUNTIME_CHECK } from '../server/db/client.js';
 
 const image = 'postgres:18@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc';
 const runtime = 'biosaude_runtime_prod';
@@ -80,6 +80,18 @@ test('Production security: PostgreSQL 18 disposable (no external database)', { t
     const baseline = policies();
     assert.equal(JSON.parse(baseline).length, 21);
 
+    await t.test('corporate Preview requires least privilege and preserves the existing workspace policies', () => {
+      const preview = 'biosaude_runtime_preview';
+      sql(`CREATE ROLE ${preview} LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT`);
+      sql(readFileSync('scripts/neon-corporate-preview-runtime-grants.sql', 'utf8'));
+      assert.equal(policies(), baseline);
+      sql(PREVIEW_RUNTIME_CHECK, preview);
+      denied(PREVIEW_RUNTIME_CHECK, 'postgres', 'PBR01');
+      denied('CREATE TABLE biosaude.blocked(id integer)', preview, '42501');
+      denied(scoped('UPDATE biosaude.identity_memberships SET permissions=ARRAY[]::text[]'), preview, '42501');
+      assert.equal(sql(scoped('SELECT count(*) FROM biosaude.financial_records'), preview).split('\n').at(-1), '2');
+      assert.equal(sql('SELECT count(*) FROM biosaude.financial_records', preview), '0');
+    });
     await t.test('full SQL commits 20 restrictive policies, preserving all 21 baseline definitions', () => {
       sql(boundary);
       assert.equal(sql("SELECT count(*) FROM pg_policies WHERE schemaname='biosaude'"), '41');
