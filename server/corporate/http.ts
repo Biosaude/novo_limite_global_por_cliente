@@ -1,14 +1,14 @@
 import type { FinancialRequest, FinancialResponse } from "../financial/handler.js";
 import { ServerError } from "../errors.js";
 import { z } from "zod";
-import { corporateAuthResponse, corporatePreviewEnabled, requireCorporateRead } from "./auth.server.js";
+import { corporateAuthResponse, corporateOriginSetting, corporatePreviewEnabled, requireCorporateRead } from "./auth.server.js";
 import { CorporateAccessError, corporateAuthPaths } from "./access.js";
 import { directoryId } from "./entra.server.js";
 import type { VerifiedIdentity } from "../security/identity.js";
 import type { ServerEnvironment } from "../config.js";
 
 export function corporateRequest(req: FinancialRequest, env: ServerEnvironment) {
-  const origin = new URL(env.GLOBAL_LIMIT_PREVIEW_ORIGIN ?? "");
+  const origin = new URL(env[corporateOriginSetting(env)] ?? "");
   const url = new URL(req.url ?? "/", origin);
   if (req.headers.host !== origin.host || url.origin !== origin.origin)
     throw new CorporateAccessError("corporate_denied");
@@ -42,12 +42,15 @@ export async function bindFinancialIdentity(
   try {
     const principal = await authorize(corporateRequest(req, env));
     if (!principal) throw new CorporateAccessError("corporate_login");
-    const bindings = bindingsSchema.parse(JSON.parse(env.GLOBAL_LIMIT_PREVIEW_IDENTITY_BINDINGS ?? ""));
+    const production = env.VERCEL_ENV === "production";
+    const bindings = bindingsSchema.parse(JSON.parse(
+      (production ? env.GLOBAL_LIMIT_PRODUCTION_IDENTITY_BINDINGS : env.GLOBAL_LIMIT_PREVIEW_IDENTITY_BINDINGS) ?? "",
+    ));
     const subjects = new Set(bindings.map(binding => binding.subject));
     const principals = new Set(bindings.map(binding => `${binding.tenantId}/${binding.objectId}`));
     if (subjects.size !== bindings.length || principals.size !== bindings.length)
       throw new Error("Vínculos de homologação duplicados.");
-    if (identity.issuer !== env.GLOBAL_LIMIT_PREVIEW_AUTH_ISSUER ||
+    if (identity.issuer !== (production ? env.FINANCIAL_AUTH_ISSUER : env.GLOBAL_LIMIT_PREVIEW_AUTH_ISSUER) ||
         !bindings.some(binding => binding.tenantId === principal.tenantId &&
           binding.objectId === principal.objectId && binding.subject === identity.subject))
       throw new CorporateAccessError("corporate_denied");
@@ -67,15 +70,19 @@ export function createCorporateHandler(env: ServerEnvironment = process.env) {
       return res.end();
     }
     try {
+      const path = new URL(req.url ?? "/", "https://request.invalid").pathname;
+      const knownPaths: readonly string[] = Object.values(corporateAuthPaths);
+      if (path !== "/api/corporate-auth/status" && !knownPaths.includes(path)) {
+        res.statusCode = 404;
+        return res.end();
+      }
       const request = corporateRequest(req, env);
-      const path = new URL(request.url).pathname;
       if (path === "/api/corporate-auth/status" && req.method === "GET") {
         if (!(await requireCorporateRead(request))) throw new CorporateAccessError("corporate_login");
         res.statusCode = 204;
         return res.end();
       }
-      const knownPaths: readonly string[] = Object.values(corporateAuthPaths);
-      const response = knownPaths.includes(path) && await corporateAuthResponse(request);
+      const response = await corporateAuthResponse(request);
       if (!response) {
         res.statusCode = 404;
         return res.end();

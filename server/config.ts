@@ -21,7 +21,7 @@ export function readDatabaseUrl(environment?: ServerEnvironment): string {
       "PUBLIC_DATABASE_URL_FORBIDDEN",
       "Remova a variável pública de conexão; use somente DATABASE_URL no servidor.",
     );
-  const corporate = corporatePreviewEnabled(env);
+  const corporate = env.VERCEL_ENV !== "production" && corporatePreviewEnabled(env);
   const value = (corporate ? env.GLOBAL_LIMIT_PREVIEW_DATABASE_URL : env.DATABASE_URL)?.trim();
   if (!value)
     throw new ServerError(
@@ -51,7 +51,13 @@ export function readDatabaseUrl(environment?: ServerEnvironment): string {
     )) throw Error();
     // Production must never fall back to the owner or a dashboard-created admin role.
     if (env.VERCEL_ENV === "production" &&
-        decodeURIComponent(url.username) !== "biosaude_runtime_prod")
+        (decodeURIComponent(url.username) !== "biosaude_runtime_prod" ||
+          url.searchParams.get("sslmode") !== "verify-full" ||
+          !/^ep-[a-z0-9-]+(?:\.[a-z0-9-]+)*\.neon\.tech$/.test(url.hostname) ||
+          url.hostname !== env.GLOBAL_LIMIT_PRODUCTION_NEON_HOST ||
+          [env.GLOBAL_LIMIT_PREVIEW_NEON_HOST, "ep-rough-sunset-b6bze16d.c-2.sa-east-1.aws.neon.tech",
+            "ep-quiet-bird-b6xxmzh7.c-2.sa-east-1.aws.neon.tech"].some(host =>
+              host?.replace("-pooler.", ".") === url.hostname.replace("-pooler.", "."))))
       throw new Error();
   } catch {
     throw new ServerError(

@@ -9,6 +9,7 @@ import {
   type IdentityVerifier,
 } from "../security/identity.js";
 import { bindFinancialIdentity } from "../corporate/http.js";
+import type { requireCorporateRead } from "../corporate/auth.server.js";
 import { financialContext } from "../security/financial-context.js";
 import type { Permission } from "../security/authorization.js";
 import {
@@ -39,6 +40,7 @@ interface Dependencies {
   identity?: IdentityVerifier;
   database?: ScopedDatabase;
   diagnostic?: FinancialGetLogger;
+  corporateAuthorize?: typeof requireCorporateRead;
 }
 const routes: Record<string, Record<string, Permission>> = {
   active: {
@@ -118,7 +120,7 @@ export function createFinancialHandler(dependencies: Dependencies = {}) {
         );
       identity ??= dependencies.identity ?? createIdentityVerifier(env);
       const verified = await identity.verify(req.headers.authorization);
-      await bindFinancialIdentity(req, env, verified);
+      await bindFinancialIdentity(req, env, verified, dependencies.corporateAuthorize);
       identityVerified = true;
       diagnostic.phase("validation");
       const url = new URL(req.url ?? "", "https://request.invalid");

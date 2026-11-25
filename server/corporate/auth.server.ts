@@ -11,9 +11,13 @@ const storedAttemptSchema = attemptSchema.extend({ expiresAt: z.number().int() }
 const sessionSchema = identitySchema.extend({ expiresAt: z.number().int() });
 const authPaths: readonly string[] = Object.values(corporateAuthPaths);
 
+export function corporateOriginSetting(env = process.env) {
+  return env.VERCEL_ENV === "production" ? "GLOBAL_LIMIT_PRODUCTION_ORIGIN" : "GLOBAL_LIMIT_PREVIEW_ORIGIN";
+}
+
 export function corporatePreviewEnabled(env = process.env) {
-  return env.VERCEL_ENV !== "production" &&
-    (env.GLOBAL_LIMIT_AUTH_MODE === "preview" || env.VITE_GLOBAL_LIMIT_CORPORATE_PREVIEW === "true");
+  if (env.VERCEL_ENV === "production") return true;
+  return (env.GLOBAL_LIMIT_AUTH_MODE === "preview" || env.VITE_GLOBAL_LIMIT_CORPORATE_PREVIEW === "true");
 }
 
 function required(env: NodeJS.ProcessEnv, name: string) {
@@ -43,8 +47,8 @@ export function createCorporateAuth(
   entraFetch?: CustomFetch,
 ) {
   const origin = urlSetting(
-    required(env, "GLOBAL_LIMIT_PREVIEW_ORIGIN"),
-    env.VERCEL_ENV !== "preview",
+    required(env, corporateOriginSetting(env)),
+    !["preview", "production"].includes(env.VERCEL_ENV ?? ""),
   );
   const endpoint = urlSetting(required(env, "GLOBAL_LIMIT_CENTRAL_BI_ENTITLEMENT_URL"));
   const redis = urlSetting(required(env, "GLOBAL_LIMIT_SESSION_STORE_URL"));
@@ -80,6 +84,7 @@ export function createCorporateAuth(
     required(env, "GLOBAL_LIMIT_SESSION_STORE_TOKEN"),
     origin.origin,
     fetcher,
+    env.VERCEL_ENV === "production" ? "production" : "preview",
   );
   const secure = origin.protocol === "https:";
   const sessionCookie = secure ? "__Host-global-limit-session" : "global-limit-local-session";

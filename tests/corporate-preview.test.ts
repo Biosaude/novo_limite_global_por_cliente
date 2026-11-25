@@ -24,7 +24,15 @@ test("aceita apenas uma concessão Entra ligada ao sub do JWT Neon verificado", 
   await assert.rejects(bindFinancialIdentity(req, env, identity, async () => { throw new CorporateAccessError("corporate_denied"); }), { code: "ACCESS_DENIED" });
   await assert.rejects(bindFinancialIdentity(req, env, identity, async () => { throw new Error("down"); }), { code: "CORPORATE_UNAVAILABLE" });
   await assert.rejects(bindFinancialIdentity({ ...req, headers: { host: "other.invalid" } }, env, identity, granted), { code: "ACCESS_DENIED" });
-  await bindFinancialIdentity(req, { ...env, VERCEL_ENV: "production" }, identity, async () => { throw new Error("unexpected"); });
+  const production = { ...env, VERCEL_ENV: "production", GLOBAL_LIMIT_PRODUCTION_ORIGIN: env.GLOBAL_LIMIT_PREVIEW_ORIGIN,
+    FINANCIAL_AUTH_ISSUER: identity.issuer, GLOBAL_LIMIT_PRODUCTION_IDENTITY_BINDINGS: env.GLOBAL_LIMIT_PREVIEW_IDENTITY_BINDINGS };
+  await bindFinancialIdentity(req, production, identity, granted);
+  await assert.rejects(bindFinancialIdentity(req, production, identity, async () => null), { code: "UNAUTHENTICATED" });
+  await assert.rejects(bindFinancialIdentity(req, production, identity, async () => {
+    throw new CorporateAccessError("corporate_denied");
+  }), { code: "ACCESS_DENIED" });
+  await assert.rejects(bindFinancialIdentity(req, { ...production, GLOBAL_LIMIT_PRODUCTION_IDENTITY_BINDINGS: undefined }, identity, granted),
+    { code: "CORPORATE_UNAVAILABLE" });
 });
 
 test("conexão usa host isolado, papel dedicado e TLS verify-full", () => {

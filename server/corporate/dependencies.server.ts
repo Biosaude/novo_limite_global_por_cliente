@@ -52,8 +52,9 @@ export function sessionStore(
   token: string,
   origin: string,
   fetcher: CorporateFetch,
+  scope: "preview" | "production" = "preview",
 ) {
-  const namespace = `global-limit:preview:${createHash("sha256").update(origin).digest("hex")}:`;
+  const namespace = `global-limit:${scope}:${createHash("sha256").update(origin).digest("hex")}:`;
   async function command(args: (number | string)[]) {
     const response = await fetcher(endpoint, {
       method: "POST",

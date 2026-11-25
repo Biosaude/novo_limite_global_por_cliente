@@ -18,7 +18,7 @@ export function createIdentityVerifier(
   suppliedKey?: JWTVerifyGetKey,
 ): IdentityVerifier {
   assertServerOnly();
-  const corporate = corporatePreviewEnabled(env);
+  const corporate = env.VERCEL_ENV !== "production" && corporatePreviewEnabled(env);
   const issuer = (corporate ? env.GLOBAL_LIMIT_PREVIEW_AUTH_ISSUER : env.FINANCIAL_AUTH_ISSUER) ?? "";
   // Better Auth defaults the JWT audience to its issuer. Retain strict
   // audience validation even when the dedicated variable is not configured.
