@@ -1,3 +1,5 @@
+import { corporateOriginSetting, corporatePreviewEnabled, requireCorporateRead } from "../corporate/auth.server.js";
+import { corporateErrorStatus, corporateRequest } from "../corporate/http.js";
 import type { ServerEnvironment } from "../config.js";
 import { authEnvironmentAllowed } from "../production-gates.js";
 import type { FinancialRequest, FinancialResponse } from "../financial/handler.js";
@@ -8,7 +10,7 @@ const methods: Record<string,string> = { "sign-in/email": "POST", "sign-out": "P
 };
 const cookieName = /^(?:__Secure-|__Host-)?(?:neon-auth|neonauth|better-auth)\.[A-Za-z0-9_.-]+$/;
 /** Proxy restrito de sessão na mesma origem. Nunca recebe destino ou SQL do cliente. */
-export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fetch, log: AuthDiagnosticLogger = logAuthDiagnostic) {
+export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fetch, log: AuthDiagnosticLogger = logAuthDiagnostic, authorize = requireCorporateRead) {
   return async (req: FinancialRequest, res: FinancialResponse) => {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.setHeader("Cache-Control", "no-store, private");
@@ -24,17 +26,28 @@ export function createAuthProxy(env?: ServerEnvironment, send: typeof fetch = fe
     const report = (status: number | null, code: string) => {
       try { log({ status, code }); } catch { /* Logging failures must not alter authentication. */ }
     };
-    if (!config.NEON_AUTH_BASE_URL) {
+    const corporate = corporatePreviewEnabled(config);
+    const baseUrl = corporate && config.VERCEL_ENV !== "production" ? config.GLOBAL_LIMIT_PREVIEW_NEON_AUTH_BASE_URL : config.NEON_AUTH_BASE_URL;
+    if (!baseUrl) {
       report(null,"AUTH_PROXY_CONFIGURATION_ERROR");
       return reply(404,{ code:"AUTH_DISABLED", message:"Autenticação indisponível neste ambiente." });
     }
     let phase: "configuration" | "request" | "communication" | "response" = "configuration";
     let upstreamStatus: number | null = null;
     try {
-      const base = new URL(config.NEON_AUTH_BASE_URL);
+      const base = new URL(baseUrl);
+      if (corporate) {
+        if (config.VERCEL_ENV !== "production" && config.NEON_AUTH_BASE_URL && new URL(config.NEON_AUTH_BASE_URL).origin === base.origin) throw Error();
+        try {
+          if (!(await authorize(corporateRequest(req, config)))) return reply(401, { code: "UNAUTHENTICATED" });
+        } catch (error) {
+          return reply(corporateErrorStatus(error), { code: "CORPORATE_ACCESS_REQUIRED" });
+        }
+      }
       if (base.protocol!=="https:" || base.username || base.password || base.search || base.hash
         || !/\.neon\.(?:tech|build)$/.test(base.hostname)) throw Error();
-      const origins = (config.VERCEL_ENV === "production" ? [config.AUTH_APP_ORIGIN] : [config.AUTH_APP_ORIGIN, config.VERCEL_URL && `https://${config.VERCEL_URL}`,
+      const origins = (corporate ? [config[corporateOriginSetting(config)]?.replace(/\/$/, "")]
+        : config.VERCEL_ENV === "production" ? [config.AUTH_APP_ORIGIN] : [config.AUTH_APP_ORIGIN, config.VERCEL_URL && `https://${config.VERCEL_URL}`,
         config.VERCEL_BRANCH_URL && `https://${config.VERCEL_BRANCH_URL}`]).filter((x): x is string => !!x);
       if (!origins.length) throw Error();
       for (const origin of origins) {

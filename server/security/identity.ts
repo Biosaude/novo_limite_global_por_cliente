@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import { assertServerOnly, type ServerEnvironment } from "../config.js";
+import { corporatePreviewEnabled } from "../corporate/auth.server.js";
 import { ServerError } from "../errors.js";
 export interface VerifiedIdentity {
   issuer: string;
@@ -17,13 +18,19 @@ export function createIdentityVerifier(
   suppliedKey?: JWTVerifyGetKey,
 ): IdentityVerifier {
   assertServerOnly();
-  const issuer = env.FINANCIAL_AUTH_ISSUER ?? "";
+  const corporate = env.VERCEL_ENV !== "production" && corporatePreviewEnabled(env);
+  const issuer = (corporate ? env.GLOBAL_LIMIT_PREVIEW_AUTH_ISSUER : env.FINANCIAL_AUTH_ISSUER) ?? "";
   // Better Auth defaults the JWT audience to its issuer. Retain strict
   // audience validation even when the dedicated variable is not configured.
   // An explicit audience still takes precedence for customized providers.
-  const audience = env.FINANCIAL_AUTH_AUDIENCE?.trim() || issuer;
-  const jwks = env.FINANCIAL_AUTH_JWKS_URL ?? "";
+  const audience = (corporate ? env.GLOBAL_LIMIT_PREVIEW_AUTH_AUDIENCE : env.FINANCIAL_AUTH_AUDIENCE)?.trim() || issuer;
+  const jwks = (corporate ? env.GLOBAL_LIMIT_PREVIEW_AUTH_JWKS_URL : env.FINANCIAL_AUTH_JWKS_URL) ?? "";
   try {
+    if (corporate && (!env.GLOBAL_LIMIT_PREVIEW_NEON_AUTH_BASE_URL ||
+      new URL(env.GLOBAL_LIMIT_PREVIEW_NEON_AUTH_BASE_URL).origin !== new URL(issuer).origin ||
+      new URL(jwks).origin !== new URL(issuer).origin ||
+      (env.FINANCIAL_AUTH_ISSUER && new URL(env.FINANCIAL_AUTH_ISSUER).origin === new URL(issuer).origin)))
+      throw Error();
     for (const value of [issuer, jwks]) {
       const url = new URL(value);
       if (

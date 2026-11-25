@@ -1,10 +1,13 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {createAuthProxy} from "../server/auth/proxy";
+import {createAuthProxy as productionProxy} from "../server/auth/proxy";
+const granted = async () => ({ tenantId: "synthetic", objectId: "synthetic" });
+const createAuthProxy = (env?: Parameters<typeof productionProxy>[0], send?: Parameters<typeof productionProxy>[1], log?: Parameters<typeof productionProxy>[2]) =>
+  productionProxy(env, send, log, granted);
 import {createFinancialHandler} from "../server/financial/handler";
-const env={VERCEL_ENV:"preview",NEON_AUTH_BASE_URL:"https://ep-synthetic.neonauth.us-east-2.aws.neon.build/neondb/auth",AUTH_APP_ORIGIN:"https://synthetic.vercel.app"};
+const env={VERCEL_ENV:"preview",NEON_AUTH_BASE_URL:"https://ep-synthetic.neonauth.us-east-2.aws.neon.build/neondb/auth",AUTH_APP_ORIGIN:"https://synthetic.vercel.app",GLOBAL_LIMIT_PRODUCTION_ORIGIN:"https://synthetic.vercel.app"};
 function response(){return {statusCode:0,headers:{} as Record<string,unknown>,body:"",setHeader(k:string,v:unknown){this.headers[k]=v;},end(v?:string){this.body=v??"";}};}
-const request=(path="get-session",method="GET",headers:Record<string,string>={},body?:unknown)=>({method,url:`/api/auth/proxy?path=${path}`,headers,body});
+const request=(path="get-session",method="GET",headers:Record<string,string>={},body?:unknown)=>({method,url:`/api/auth/proxy?path=${path}`,headers:{host:new URL(env.AUTH_APP_ORIGIN).host,...headers},body});
 test("login: invalid credentials are 401 even when Better Auth uses 400; outages remain 503",async()=>{
  for(const code of ["INVALID_EMAIL_OR_PASSWORD","INVALID_PASSWORD","CREDENTIAL_ACCOUNT_NOT_FOUND","USER_NOT_FOUND"]){
   for(const status of [400,401,403,500,503]){
@@ -106,4 +109,12 @@ test("Auth proxy: Production exige habilitação explícita, sem liberar cadastr
   const off=response();
   await createAuthProxy({...enabled,AUTH_PRODUCTION_ENABLED:"false",FINANCIAL_PRODUCTION_ENABLED:"true",FINANCIAL_API_ENABLED:"true"},async()=>{throw Error("not expected");})(request(),off);
   assert.equal(off.statusCode,404);
+});
+
+test("Production: uma credencial Neon sem sessão corporativa não chega ao provedor", async () => {
+ const config={...env,VERCEL_ENV:"production",AUTH_PRODUCTION_ENABLED:"true"};
+ const res=response();
+ await productionProxy(config,async()=>{throw Error("unexpected network");},undefined,async()=>null)(
+  request("get-session","GET",{cookie:"__Secure-neon-auth.session_token=synthetic"}),res);
+ assert.equal(res.statusCode,401);
 });

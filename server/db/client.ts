@@ -4,6 +4,7 @@ import {
   readDatabaseUrl,
   type ServerEnvironment,
 } from "../config.js";
+import { corporatePreviewEnabled } from "../corporate/auth.server.js";
 import { ServerError } from "../errors.js";
 import { databaseDiagnostic, databaseErrorCode, logDatabaseDiagnostic, type DatabaseDiagnosticLogger } from "./diagnostics.js";
 export interface Statement {
@@ -18,9 +19,11 @@ export type DriverFactory = (url: string) => Driver;
 /** Executed in the same transaction, before any application SQL. A URL username
  * alone cannot establish the privileges of the actual authenticated session.
  * PBR01 distinguishes unsafe server configuration from require_permission's 42501. */
-export const PRODUCTION_RUNTIME_CHECK = `DO $runtime$
+function runtimeCheck(role: "biosaude_runtime_prod" | "biosaude_runtime_preview") {
+  const production = role === "biosaude_runtime_prod";
+  return `DO $runtime$
 BEGIN
-  IF session_user <> 'biosaude_runtime_prod' OR current_user <> session_user
+  IF session_user <> '${role}' OR current_user <> session_user
      OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=session_user
        AND rolcanlogin AND NOT rolsuper AND NOT rolbypassrls
        AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolreplication)
@@ -45,12 +48,15 @@ BEGIN
        JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
        WHERE n.nspname='biosaude' AND c.relkind IN ('r','p')
        AND c.relname <> 'schema_migrations' AND c.relrowsecurity AND c.relforcerowsecurity) <> 20
-     OR (SELECT count(*) FROM pg_catalog.pg_policies
+     ${production ? `OR (SELECT count(*) FROM pg_catalog.pg_policies
        WHERE schemaname='biosaude' AND policyname='production_login_boundary'
-       AND permissive='RESTRICTIVE' AND cmd='ALL' AND roles=ARRAY['public']::name[]) <> 20
-  THEN RAISE EXCEPTION 'Unsafe production runtime' USING ERRCODE='PBR01';
+       AND permissive='RESTRICTIVE' AND cmd='ALL' AND roles=ARRAY['public']::name[]) <> 20` : ""}
+  THEN RAISE EXCEPTION 'Unsafe financial runtime' USING ERRCODE='PBR01';
   END IF;
 END $runtime$`;
+}
+export const PRODUCTION_RUNTIME_CHECK = runtimeCheck("biosaude_runtime_prod");
+export const PREVIEW_RUNTIME_CHECK = runtimeCheck("biosaude_runtime_preview");
 export interface ScopedDatabase {
   transaction(
     workspaceId: string,
@@ -132,8 +138,10 @@ export function createDatabase(
         const transport = (environment ?? process.env).FINANCIAL_DB_TRANSPORT;
         driver ??= (factory ?? (transport === "websocket" ? websocketFactory : neonFactory))(url!);
         phase = "transaction";
-        const checks: Statement[] = (environment ?? process.env).VERCEL_ENV === "production"
-          ? [{ text: PRODUCTION_RUNTIME_CHECK }] : [];
+        const env = environment ?? process.env;
+        const check = env.VERCEL_ENV === "production" ? PRODUCTION_RUNTIME_CHECK
+          : corporatePreviewEnabled(env) ? PREVIEW_RUNTIME_CHECK : undefined;
+        const checks: Statement[] = check ? [{ text: check }] : [];
         const result = await driver.transaction([
           ...checks,
           {

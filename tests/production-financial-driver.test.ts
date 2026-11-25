@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { neonConfig } from "@neondatabase/serverless";
 import { generateKeyPair, exportJWK, createLocalJWKSet, SignJWT } from "jose";
+import { CorporateAccessError } from "../server/corporate/access.js";
 import { migrationPlan } from "../server/db/migration-plan.js";
 import { createDatabase } from "../server/db/client.js";
 import { createIdentityVerifier } from "../server/security/identity.js";
@@ -19,7 +20,11 @@ const workspace = "6aa0ef36-66d5-4b16-8acc-2846586458ec";
 const other = "11111111-1111-4111-8111-111111111111";
 const issuer = "https://synthetic.neon.build/neondb/auth";
 const environment = { VERCEL_ENV: "production", FINANCIAL_API_ENABLED: "true", FINANCIAL_PRODUCTION_ENABLED: "true",
-  DATABASE_URL: "postgresql://biosaude_runtime_prod:NEVER_REAL@ep-synthetic.example.invalid/neondb?sslmode=require",
+  GLOBAL_LIMIT_PRODUCTION_NEON_HOST: "ep-synthetic.neon.tech",
+  GLOBAL_LIMIT_PRODUCTION_ORIGIN: "https://limite.example.invalid",
+  GLOBAL_LIMIT_PRODUCTION_IDENTITY_BINDINGS: JSON.stringify([{ tenantId: "11111111-1111-4111-8111-111111111111",
+    objectId: "22222222-2222-4222-8222-222222222222", subject: "operator" }]),
+  DATABASE_URL: "postgresql://biosaude_runtime_prod:NEVER_REAL@ep-synthetic.neon.tech/neondb?sslmode=verify-full",
   FINANCIAL_AUTH_ISSUER: issuer, FINANCIAL_AUTH_JWKS_URL: issuer + "/.well-known/jwks.json" };
 
 test("Production flow: real Neon driver and JWT verifier, disposable SQL database and simulated HTTPS", async t => {
@@ -71,14 +76,19 @@ test("Production flow: real Neon driver and JWT verifier, disposable SQL databas
     const token = await new SignJWT({}).setProtectedHeader({ alg: "RS256", kid: "synthetic" }).setIssuer(issuer)
       .setAudience(issuer).setSubject("operator").setIssuedAt().setExpirationTime("5m").sign(keys.privateKey);
     const logs: DatabaseDiagnostic[] = [];
+    let corporateGranted = true;
     const handler = createFinancialHandler({ environment, identity,
+      corporateAuthorize: async () => {
+        if (!corporateGranted) throw new CorporateAccessError("corporate_denied");
+        return { tenantId: "11111111-1111-4111-8111-111111111111", objectId: "22222222-2222-4222-8222-222222222222" };
+      },
       database: createDatabase(environment, undefined, entry => { logs.push(entry); }), diagnostic: () => {} });
     async function invoke(operation: string, scope = workspace, jwt: string | undefined = token,
       options: { method?: string; body?: unknown; revision?: number } = {}) {
       const res = { statusCode: 0, body: "", headers: {} as Record<string, string>,
         setHeader(k: string, v: string) { this.headers[k] = v; }, end(body?: string) { this.body = body ?? ""; } };
       await handler({ method: options.method ?? "GET", url: `/api/financial/${operation}`, body: options.body,
-        headers: { "x-workspace-id": scope, ...(jwt ? { authorization: `Bearer ${jwt}` } : {}),
+        headers: { host: new URL(environment.GLOBAL_LIMIT_PRODUCTION_ORIGIN).host, "x-workspace-id": scope, ...(jwt ? { authorization: `Bearer ${jwt}` } : {}),
           ...(options.body ? { "content-type": "application/json" } : {}),
           ...(options.revision !== undefined ? { "if-match": `"${options.revision}"` } : {}) } }, res);
       return res;
@@ -86,6 +96,10 @@ test("Production flow: real Neon driver and JWT verifier, disposable SQL databas
     await t.test("missing JWT never connects; authorized empty database is 200 with revision zero", async () => {
       assert.equal((await invoke("active", workspace, "")).statusCode, 401);
       assert.equal(requests, 0);
+      corporateGranted = false;
+      assert.equal((await invoke("active")).statusCode, 403);
+      assert.equal(requests, 0);
+      corporateGranted = true;
       const active = await invoke("active");
       assert.equal(active.statusCode, 200, JSON.stringify(logs));
       assert.deepEqual(JSON.parse(active.body), { dataset: null });
