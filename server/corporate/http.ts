@@ -1,14 +1,14 @@
 import type { FinancialRequest, FinancialResponse } from "../financial/handler.js";
 import { ServerError } from "../errors.js";
 import { z } from "zod";
-import { corporateAuthResponse, corporateOriginSetting, corporatePreviewEnabled, requireCorporateRead } from "./auth.server.js";
+import { corporateAuthResponse, configuredCorporateOrigin, previewEntryOrigin, corporatePreviewEnabled, requireCorporateRead } from "./auth.server.js";
 import { CorporateAccessError, corporateAuthPaths } from "./access.js";
 import { directoryId } from "./entra.server.js";
 import type { VerifiedIdentity } from "../security/identity.js";
 import type { ServerEnvironment } from "../config.js";
 
 export function corporateRequest(req: FinancialRequest, env: ServerEnvironment) {
-  const origin = new URL(env[corporateOriginSetting(env)] ?? "");
+  const origin = configuredCorporateOrigin(env);
   const url = new URL(req.url ?? "/", origin);
   if (req.headers.host !== origin.host || url.origin !== origin.origin)
     throw new CorporateAccessError("corporate_denied");
@@ -75,6 +75,20 @@ export function createCorporateHandler(env: ServerEnvironment = process.env) {
       if (path !== "/api/corporate-auth/status" && !knownPaths.includes(path)) {
         res.statusCode = 404;
         return res.end();
+      }
+      const host = req.headers.host;
+      if (req.method === "GET" && (path === corporateAuthPaths.login || path === "/api/corporate-auth/status")) {
+        const canonical = typeof host === "string" && previewEntryOrigin(host, env);
+        if (canonical) {
+          if (path === corporateAuthPaths.login) {
+            res.statusCode = 303;
+            res.setHeader("Location", canonical.href);
+            return res.end();
+          }
+          res.statusCode = 403;
+          res.setHeader("Content-Type", "application/json");
+          return res.end(JSON.stringify({ code: "corporate_origin_mismatch", canonicalOrigin: canonical.origin }));
+        }
       }
       const request = corporateRequest(req, env);
       if (path === "/api/corporate-auth/status" && req.method === "GET") {

@@ -12,6 +12,6 @@ const content = accessReturn
   : <App />;
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    {(import.meta.env.VITE_DEPLOYMENT_ENVIRONMENT === "production" || import.meta.env.VITE_GLOBAL_LIMIT_CORPORATE_PREVIEW === "true") ? <CorporatePreviewGate>{content}</CorporatePreviewGate> : content}
+    {(["preview", "production"].includes(import.meta.env.VITE_DEPLOYMENT_ENVIRONMENT) || import.meta.env.VITE_GLOBAL_LIMIT_CORPORATE_PREVIEW === "true") ? <CorporatePreviewGate>{content}</CorporatePreviewGate> : content}
   </React.StrictMode>,
 );
